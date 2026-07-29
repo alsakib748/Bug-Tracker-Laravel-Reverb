@@ -129,6 +129,7 @@ import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../stores/auth';
 import CommonGridShape from '@/components/common/CommonGridShape.vue'
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
+import { toast } from 'vue3-toastify'
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -160,9 +161,11 @@ const handleSubmit = async () => {
     const success = await authStore.login(form);
 
     if (success) {
+      toast.success('User Login Successfully');
       // Login succeeded - router guard will redirect to dashboard
       router.push({ name: 'Ecommerce' });
     } else {
+      toast.error('User Login Failed!!');
       // Login Failed - store might have thrown or returned false
       errorMessage.value = 'Invalid email or password. Please try again.';
     }

@@ -44,6 +44,21 @@ export const useAuthStore = defineStore('auth', {
         return false
       }
     },
+    async checkAuth() {
+      try {
+        const response = await api.get('/api/user')
+        if (response.status === 200) {
+          this.user = response.data
+          this.authenticated = true
+          return true
+        }
+        return false
+      } catch {
+        this.user = null
+        this.authenticated = false
+        return false
+      }
+    },
     async logout() {
       try {
         await getCsrfToken()

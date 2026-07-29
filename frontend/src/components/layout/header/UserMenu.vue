@@ -47,6 +47,7 @@ import { UserCircleIcon, ChevronDownIcon, LogoutIcon, SettingsIcon, InfoCircleIc
 import { useRouter } from 'vue-router'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '../../../stores/auth';
+import { toast } from 'vue3-toastify'
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -77,8 +78,10 @@ const signOut = async () => {
     const success = await authStore.logout();
 
     if (success) {
+      toast.success('User Logout Successfully');
       router.push({ name: 'Login' });
     } else {
+      toast.error('User Logout Failed');
       console.log('Logout failed');
     }
   } catch (error) {
