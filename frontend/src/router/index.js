@@ -12,6 +12,7 @@ const routes = [
     path: '/dashboard',
     name: 'Ecommerce',
     component: () => import('../views/Ecommerce.vue'),
+    meta: { requiresAuth: true },
   },
   {
     path: '/calendar',
@@ -144,6 +145,23 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach(async (to, form, next) => {
+  const auth = useAuthStore()
+
+  // If we haven't checked auth yet, do it
+  if (auth.user === null && !auth.authenticated) {
+    await auth.checkAuth()
+  }
+
+  if (to.meta.requiresAuth && !auth.authenticated) {
+    next({ name: 'Login' })
+  } else if (to.meta.guest && auth.authenticated) {
+    next({ name: 'Ecommerce' })
+  } else {
+    next()
+  }
 })
 
 export default router

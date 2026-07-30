@@ -7,6 +7,11 @@ export const useAuthStore = defineStore('auth', {
     authenticated: false,
     loading: false,
   }),
+  getters: {
+    isAdmin: (state) => state.user?.role === 'admin',
+    isDeveloper: (state) => state.user?.role === 'developer',
+    isTester: (state) => state.user?.role === 'tester',
+  },
   actions: {
     async login(credentials) {
       this.loading = true
@@ -35,33 +40,42 @@ export const useAuthStore = defineStore('auth', {
     async getUser() {
       try {
         const response = await api.get('/api/user')
-        const data = response.data
-        this.user = data
-        console.log(this.user.name)
+        this.user = response.data
+        this.authenticated = true
+        // console.log(this.user.name)
         return true
       } catch (error) {
-        console.error('User profile failed: ', error)
-        return false
+        this.user = null
+        this.authenticated = false
+        throw error
+        // console.error('User profile failed: ', error)
+        // return false
       }
     },
     async checkAuth() {
       try {
-        const response = await api.get('/api/user')
-        if (response.status === 200) {
-          this.user = response.data
-          this.authenticated = true
-          return true
-        }
-        return false
-      } catch {
-        this.user = null
-        this.authenticated = false
-        return false
-      }
+        await this.getUser()
+      } catch {}
     },
+    // async checkAuth() {
+    //   try {
+    //     const response = await api.get('/api/user')
+    //     if (response.status === 200) {
+    //       this.user = response.data
+    //       this.authenticated = true
+    //       return true
+    //     }
+    //     return false
+    //   } catch (error) {
+    //     console.error('Auth error: ', error)
+    //     this.user = null
+    //     this.authenticated = false
+    //     return false
+    //   }
+    // },
     async logout() {
       try {
-        await getCsrfToken()
+        // await getCsrfToken()
         await api.post('/api/logout')
 
         // Clear auth state
@@ -69,7 +83,7 @@ export const useAuthStore = defineStore('auth', {
         this.authenticated = false
 
         // Reset CSRF token so next login gets fresh token
-        resetCsrfToken()
+        // resetCsrfToken()
 
         return true
       } catch (error) {
