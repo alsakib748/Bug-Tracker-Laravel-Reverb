@@ -30,6 +30,10 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'avatar' => fake()->imageUrl(100, 100, 'people', true, 'avatar'), // placeholder
+            'role' => fake()->randomElement(['admin', 'developer', 'tester']),
+            'status' => fake()->randomElement(['active', 'inactive']),
+            'last_seen' => fake()->dateTimeBetween('-1 month', 'now'),
         ];
     }
 
@@ -38,8 +42,25 @@ class UserFactory extends Factory
      */
     public function unverified(): static
     {
-        return $this->state(fn (array $attributes) => [
+        return $this->state(fn(array $attributes) => [
             'email_verified_at' => null,
         ]);
     }
+
+    // Helpers for specific roles
+    public function admin(): static
+    {
+        return $this->state(fn() => ['role' => 'admin']);
+    }
+
+    public function developer(): static
+    {
+        return $this->state(fn() => ['role' => 'developer']);
+    }
+
+    public function tester(): static
+    {
+        return $this->state(fn() => ['role' => 'tester']);
+    }
+
 }
