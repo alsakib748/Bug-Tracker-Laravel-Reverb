@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProjectStatus;
 use App\Models\ActivityLog;
 use App\Models\Issue;
 use App\Models\User;
@@ -19,6 +20,10 @@ class Project extends Model
         'color',
         'status',
         'created_by'
+    ];
+
+    protected $casts = [
+        'status' => ProjectStatus::class,
     ];
 
     /**

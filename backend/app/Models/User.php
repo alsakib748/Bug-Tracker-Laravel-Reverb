@@ -3,6 +3,8 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Models\ActivityLog;
 use App\Models\Attachment;
 use App\Models\Comment;
@@ -34,6 +36,8 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
             'last_seen' => 'datetime',
+            'role' => UserRole::class,
+            'status' => UserStatus::class,
         ];
     }
 

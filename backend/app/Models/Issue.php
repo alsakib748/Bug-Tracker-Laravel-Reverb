@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\IssueStatus;
+use App\Enums\IssueType;
+use App\Enums\Priority;
+use App\Enums\Severity;
 use App\Models\ActivityLog;
 use App\Models\Attachment;
 use App\Models\Comment;
@@ -32,7 +36,11 @@ class Issue extends Model
     protected $casts = [
         'due_date' => 'date',
         'completed_at' => 'datetime',
-        'estimated_hours' => 'float'
+        'estimated_hours' => 'float',
+        'status' => IssueStatus::class,
+        'priority' => Priority::class,
+        'severity' => Severity::class,
+        'type' => IssueType::class,
     ];
 
     public function project()
