@@ -1,6 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
+// Import Project Pages
+
+// Import Project Pages
+import ProjectsIndex from '@/views/Admin/Projects/Index.vue'
+import ProjectsCreate from '@/views/Admin/Projects/Create.vue'
+import ProjectsEdit from '@/views/Admin/Projects/Edit.vue'
+// import ProjectsShow from '@/views/Admin/Projects/Show.vue';
+
 const routes = [
   {
     path: '/',
@@ -14,6 +22,30 @@ const routes = [
     component: () => import('../views/Ecommerce.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/projects',
+    name: 'ProjectsIndex',
+    component: ProjectsIndex,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/projects/create',
+    name: 'ProjectsCreate',
+    component: ProjectsCreate,
+    meta: { requiresAuth: true }, // fixed
+  },
+  {
+    path: '/projects/:id/edit',
+    name: 'ProjectsEdit',
+    component: ProjectsEdit,
+    meta: { requiresAuth: true },
+  },
+  // {
+  //   path: '/projects/:id',
+  //   name: 'ProjectsShow',
+  //   component: ProjectsShow,
+  //   meta: { requiresAuth: true },
+  // },
   {
     path: '/calendar',
     name: 'Calendar',

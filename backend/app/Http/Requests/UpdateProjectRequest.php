@@ -24,7 +24,9 @@ class UpdateProjectRequest extends FormRequest
      */
     public function rules(): array
     {
-        $projectId = $this->route('project')->id ?? null;
+
+        $project = $this->route('project') ?? $this->route('id');
+        // $projectId = $project ? (is_numeric($project) ? $project : $project->id) : null;
 
         return [
             'name' => 'sometimes|string|max:255',
@@ -32,7 +34,7 @@ class UpdateProjectRequest extends FormRequest
                 'sometimes',
                 'string',
                 'max:20',
-                Rule::unique('projects', 'code')->ignore($projectId),
+                Rule::unique('projects', 'code')->ignore($project),
             ],
             'description' => 'nullable|string',
             'color' => 'nullable|string|max:7',

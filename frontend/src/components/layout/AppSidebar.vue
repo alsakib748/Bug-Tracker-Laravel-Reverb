@@ -201,6 +201,11 @@ const menuGroups = [
       },
       {
         icon: CalenderIcon,
+        name: "Project",
+        path: "/projects",
+      },
+      {
+        icon: CalenderIcon,
         name: "Calendar",
         path: "/calendar",
       },
