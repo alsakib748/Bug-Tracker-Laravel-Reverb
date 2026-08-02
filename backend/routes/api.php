@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProjectController;
+use App\Http\Controllers\Api\ProjectMemberController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -19,5 +20,15 @@ Route::middleware('auth:sanctum')->group(function () {
      * *Projects Route
      */
     Route::apiResource('projects', ProjectController::class);
+
+    /**
+     * * Project Members Route
+     */
+    Route::prefix('projects/{project}')->group(function () {
+        Route::get('/members', [ProjectMemberController::class, 'index'])->name('project.members.index');
+        Route::post('/members', [ProjectMemberController::class, 'store'])->name('project.members.store');
+        Route::delete('/members/{user}', [ProjectMemberController::class, 'destroy'])->name('project.members.destroy');
+        Route::get('/members/available', [ProjectMemberController::class, 'available'])->name('project.members.available');
+    });
 
 });

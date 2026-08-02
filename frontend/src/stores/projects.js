@@ -22,7 +22,7 @@ export const useProjectStore = defineStore('projects', {
         // console.log('API response: ', response.data)
         this.projects = response.data.data
         this.pagination.total = this.projects.length
-        // return response.data
+        return response.data
       } catch (error) {
         console.error('Failed to fetch projects: ', error)
         throw error
@@ -92,6 +92,30 @@ export const useProjectStore = defineStore('projects', {
       } finally {
         this.loading = false
       }
+    },
+
+    // * Fetch members of a project
+    async fetchMembers(projectId) {
+      const response = await api.get(`/api/projects/${projectId}/members`)
+      return response.data.data
+    },
+    // * Fetch available users
+    async fetchAvailableUsers(projectId) {
+      const response = await api.get(`/api/projects/${projectId}/members/available`)
+      return response.data.data
+    },
+    // * Add a member
+    async addMember(projectId, userId, role) {
+      const response = await api.post(`/api/projects/${projectId}/members`, {
+        user_id: userId,
+        role: role,
+      })
+      return response.data
+    },
+    // * Remove a member
+    async removeMember(projectId, userId) {
+      const response = await api.delete(`/api/projects/${projectId}/members/${userId}`)
+      return response.data
     },
   },
 })

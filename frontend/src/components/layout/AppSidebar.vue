@@ -200,9 +200,14 @@ const menuGroups = [
         subItems: [{ name: "Ecommerce", path: "/", pro: false }],
       },
       {
-        icon: CalenderIcon,
+        icon: GridIcon,
         name: "Project",
         path: "/projects",
+      },
+      {
+        icon: GridIcon,
+        name: "Project Member",
+        path: "/project-members",
       },
       {
         icon: CalenderIcon,

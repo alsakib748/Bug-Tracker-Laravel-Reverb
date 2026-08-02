@@ -62,6 +62,8 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
+        // dd($project);
+
         // $this->authorize('view', $project);
         $project = $this->projectService->getProject($project);
 

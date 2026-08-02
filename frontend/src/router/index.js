@@ -7,7 +7,10 @@ import { useAuthStore } from '../stores/auth.js'
 import ProjectsIndex from '@/views/Admin/Projects/Index.vue'
 import ProjectsCreate from '@/views/Admin/Projects/Create.vue'
 import ProjectsEdit from '@/views/Admin/Projects/Edit.vue'
-// import ProjectsShow from '@/views/Admin/Projects/Show.vue';
+import ProjectsShow from '@/views/Admin/Projects/Show.vue'
+
+// Import Project Members Page
+// import ProjectMembers from '@/views/Admin/ProjectMembers/ProjectMembers.vue'
 
 const routes = [
   {
@@ -40,12 +43,12 @@ const routes = [
     component: ProjectsEdit,
     meta: { requiresAuth: true },
   },
-  // {
-  //   path: '/projects/:id',
-  //   name: 'ProjectsShow',
-  //   component: ProjectsShow,
-  //   meta: { requiresAuth: true },
-  // },
+  {
+    path: '/projects/:id',
+    name: 'ProjectsShow',
+    component: ProjectsShow,
+    meta: { requiresAuth: true },
+  },
   {
     path: '/calendar',
     name: 'Calendar',
