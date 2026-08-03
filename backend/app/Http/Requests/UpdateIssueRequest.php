@@ -33,7 +33,7 @@ class UpdateIssueRequest extends FormRequest
             'description' => 'nullable|string',
             'priority' => ['sometimes', Rule::enum(Priority::class)],
             'severity' => ['sometimes', Rule::enum(Severity::class)],
-            'status' => ['sometimes', Rule::enum(IssueStatus::class)],
+            // 'status' => ['sometimes', Rule::enum(IssueStatus::class)],
             'type' => ['sometimes', Rule::enum(IssueType::class)],
             'assigned_to' => 'nullable|exists:users,id',
             'due_date' => 'nullable|date|after:today',

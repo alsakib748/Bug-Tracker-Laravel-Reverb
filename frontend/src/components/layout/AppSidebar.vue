@@ -206,8 +206,8 @@ const menuGroups = [
       },
       {
         icon: GridIcon,
-        name: "Project Member",
-        path: "/project-members",
+        name: "Issues",
+        path: "/issues",
       },
       {
         icon: CalenderIcon,

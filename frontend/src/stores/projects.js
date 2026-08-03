@@ -97,6 +97,7 @@ export const useProjectStore = defineStore('projects', {
     // * Fetch members of a project
     async fetchMembers(projectId) {
       const response = await api.get(`/api/projects/${projectId}/members`)
+      console.log('Raw members response: ', response.data)
       return response.data.data
     },
     // * Fetch available users

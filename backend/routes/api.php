@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\IssueController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectMemberController;
 use Illuminate\Http\Request;
@@ -29,6 +30,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/members', [ProjectMemberController::class, 'store'])->name('project.members.store');
         Route::delete('/members/{user}', [ProjectMemberController::class, 'destroy'])->name('project.members.destroy');
         Route::get('/members/available', [ProjectMemberController::class, 'available'])->name('project.members.available');
+    });
+
+    // Issues routes
+    Route::apiResource('issues', IssueController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
+
+    // Issues Business action routes
+    Route::prefix('issues/{issue}')->group(function () {
+        Route::patch('/assign', [IssueController::class, 'assign']);
+        Route::patch('/status', [IssueController::class, 'changeStatus']);
+        Route::patch('/reopen', [IssueController::class, 'reopen']);
+        Route::patch('/close', [IssueController::class, 'close']);
     });
 
 });

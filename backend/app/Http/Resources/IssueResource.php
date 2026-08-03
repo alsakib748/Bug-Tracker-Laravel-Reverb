@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\AttachmentResource;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -36,7 +37,9 @@ class IssueResource extends JsonResource
             'project' => $this->whenLoaded('project', fn() => new ProjectResource($this->project)),
             'reporter' => $this->whenLoaded('reporter', fn() => new UserResource($this->reporter)),
             'assignee' => $this->whenLoaded('assignee', fn() => new UserResource($this->assignee)),
+            'comments' => CommentResource::collection($this->whenLoaded('comments')),
             'comments_count' => $this->whenCounted('comments'),
+            'attachments' => AttachmentResource::collection($this->whenLoaded('attachments')),
             'attachments_count' => $this->whenCounted('attachments'),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),

@@ -9,6 +9,12 @@ import ProjectsCreate from '@/views/Admin/Projects/Create.vue'
 import ProjectsEdit from '@/views/Admin/Projects/Edit.vue'
 import ProjectsShow from '@/views/Admin/Projects/Show.vue'
 
+// Import Issues Pages
+import IssuesIndex from '@/views/Admin/Issues/Index.vue'
+import IssuesCreate from '@/views/Admin/Issues/Create.vue'
+import IssuesEdit from '@/views/Admin/Issues/Edit.vue'
+import IssuesShow from '@/views/Admin/Issues/Show.vue'
+
 // Import Project Members Page
 // import ProjectMembers from '@/views/Admin/ProjectMembers/ProjectMembers.vue'
 
@@ -47,6 +53,30 @@ const routes = [
     path: '/projects/:id',
     name: 'ProjectsShow',
     component: ProjectsShow,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/issues',
+    name: 'IssuesIndex',
+    component: IssuesIndex,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/issues/create',
+    name: 'IssuesCreate',
+    component: IssuesCreate,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/issues/:id/edit',
+    name: 'IssuesEdit',
+    component: IssuesEdit,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/issues/:id',
+    name: 'IssuesShow',
+    component: IssuesShow,
     meta: { requiresAuth: true },
   },
   {
