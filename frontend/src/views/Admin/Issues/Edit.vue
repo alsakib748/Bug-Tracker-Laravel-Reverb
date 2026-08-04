@@ -90,6 +90,7 @@ import DatePicker from 'primevue/datepicker';
 import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
 import Swal from 'sweetalert2';
+import { toast } from 'vue3-toastify'
 
 const router = useRouter();
 const route = useRoute();
@@ -175,7 +176,7 @@ const submitForm = async () => {
 
   try {
     await issueStore.updateIssue(route.params.id, { ...form });
-    // toast.success('Issue update successfully');
+    toast.success('Issue update successfully');
     router.push(`/issues/${route.params.id}`);
   } catch (error) {
     if (error.response?.data?.errors) {

@@ -7,14 +7,28 @@ import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useIssueStore } from '@/stores/issues';
 import { useProjectStore } from '@/stores/projects';
+import { useCommentStore } from '@/stores/comments';
+import { useAuthStore } from '@/stores/auth';
 import Select from 'primevue/select';
 import Button from 'primevue/button';
 import Swal from 'sweetalert2';
 
+// ... other imports
+import CommentList from '@/components/comments/CommentList.vue';
+import CommentForm from '@/components/comments/CommentForm.vue';
+
 const route = useRoute();
 const router = useRouter();
+
 const issueStore = useIssueStore();
 const projectStore = useProjectStore();
+const commentStore = useCommentStore();
+const authStore = useAuthStore();
+
+const comments = ref([]);
+const loadingComments = ref(false);
+const editingComment = ref(null);
+const showCommentForm = ref(false);
 
 const issue = ref(null);
 const loading = ref(false);
@@ -46,23 +60,6 @@ const availableStatuses = computed(() => {
 
 });
 
-const loadIssue = async () => {
-  loading.value = true;
-  try {
-    const data = await issueStore.fetchIssue(route.params.id);
-    issue.value = data;
-
-    if (data.project) {
-      const members = await projectStore.fetchMembers(data.project.id);
-      projectMembers.value = members;
-    }
-  } catch (error) {
-    console.error('Error loading issue: ', error);
-    router.push('/issues');
-  } finally {
-    loading.value = false;
-  }
-}
 
 const changeStatus = async () => {
   if (!selectedStatus.value) return;
@@ -120,6 +117,67 @@ const closeIssue = async () => {
   }
 };
 
+// comments
+const loadComments = async () => {
+  if (!issue.value) return;
+  loadComments.value = true;
+  try {
+    comments.value = await commentStore.fetchComments(issue.value.id);
+  } catch (error) {
+    console.error('Failed to load comments: ', error);
+  } finally {
+    loadingComments.value = false;
+  }
+}
+
+const handleCommentSubmit = async (content) => {
+  if (editingComment.value) {
+    //update
+    await commentStore.updateComment(editingComment.value.id, content);
+    editingComment.value = null;
+    // Re-fetch or update local - store already updates
+  } else {
+    // Create
+    await commentStore.createComment(issue.value.id, content);
+  }
+  // Refresh list from store
+  comments.value = commentStore.comments;
+}
+
+const startEdit = (comment) => {
+  editingComment.value = comment;
+};
+
+const cancelEdit = () => {
+  editingComment.value = null;
+};
+
+const deleteComment = async (commentId) => {
+  await commentStore.deleteComment(commentId);
+  comments.value = commentStore.comments;
+}
+
+// Load comments when issue loads
+
+const loadIssue = async () => {
+  loading.value = true;
+  try {
+    const data = await issueStore.fetchIssue(route.params.id);
+    issue.value = data;
+
+    if (data.project) {
+      const members = await projectStore.fetchMembers(data.project.id);
+      projectMembers.value = members;
+    }
+    await loadComments();
+  } catch (error) {
+    console.error('Error loading issue: ', error);
+    router.push('/issues');
+  } finally {
+    loading.value = false;
+  }
+}
+
 onMounted(loadIssue);
 
 </script>
@@ -162,6 +220,12 @@ onMounted(loadIssue);
           <Button @click="closeIssue" v-if="issue.status === 'resolved'" label="Close"
             class="bg-gray-600 text-white px-4 py-2 rounded" />
         </div>
+
+        <CommentList :comments="comments" :loading="loadingComments" @edit="startEdit" @delete="deleteComment" />
+
+        <CommentForm :editing="!!editingComment" :initialContent="editingComment ? editingComment.comment : ''"
+          @submit="handleCommentSubmit" @cancelEdit="cancelEdit" />
+
       </ComponentCard>
     </div>
   </AdminLayout>

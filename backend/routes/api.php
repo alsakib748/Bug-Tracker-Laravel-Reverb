@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\IssueController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectMemberController;
@@ -41,6 +42,17 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/status', [IssueController::class, 'changeStatus']);
         Route::patch('/reopen', [IssueController::class, 'reopen']);
         Route::patch('/close', [IssueController::class, 'close']);
+    });
+
+    // Comments
+    Route::prefix('issues/{issue}')->group(function () {
+        Route::get('/comments', [CommentController::class, 'index']);
+        Route::post('/comments', [CommentController::class, 'store']);
+    });
+
+    Route::prefix('comments')->group(function () {
+        Route::put('/{comment}', [CommentController::class, 'update']);
+        Route::delete('/{comment}', [CommentController::class, 'destroy']);
     });
 
 });
