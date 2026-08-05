@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
@@ -67,6 +68,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/{id}', [NotificationController::class, 'destroy']);
     });
 
-
+    //  Activity-Logs
+    Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+    Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show']);
 
 });

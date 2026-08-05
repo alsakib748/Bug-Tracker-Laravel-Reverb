@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ActivityAction;
 use App\Models\Project;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -22,6 +23,13 @@ class ProjectService
 
     //     return $query->paginate($perPage);
     // }
+
+    protected ActivityLogService $activityLogService;
+
+    public function __construct(ActivityLogService $activityLogService)
+    {
+        $this->activityLogService = $activityLogService;
+    }
 
     public function getAllProjects()
     {
@@ -46,6 +54,8 @@ class ProjectService
             'joined_at' => now(),
         ]);
 
+        $this->activityLogService->logProjectCreated($project, auth()->user());
+
         return $project->fresh(['creator', 'members']);
 
     }
@@ -57,6 +67,8 @@ class ProjectService
 
     public function updateProject(Project $project, array $data): Project
     {
+        $old = $project->getOriginal();
+
         $project->update([
             'name' => $data['name'] ?? $project->name,
             'code' => $data['code'] ?? $project->code,
@@ -64,6 +76,8 @@ class ProjectService
             'color' => $data['color'] ?? $project->color,
             'status' => $data['status'] ?? $project->status,
         ]);
+
+        $this->activityLogService->logProjectUpdated($project, auth()->user(), $old, $project->getAttributes());
 
         return $project->fresh(['creator', 'members']);
 
@@ -76,6 +90,17 @@ class ProjectService
         }
 
         $project->delete();
+
+        $this->activityLogService->log(
+            ActivityAction::PROJECT_DELETED,
+            auth()->user(),
+            $project,
+            null,
+            Project::class,
+            $project->id,
+            auth()->user()->name . ' deleted project ' . $project->name
+        );
+
     }
 
 }

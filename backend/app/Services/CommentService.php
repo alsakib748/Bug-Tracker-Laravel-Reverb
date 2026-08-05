@@ -14,10 +14,12 @@ class CommentService
 {
 
     protected NotificationService $notificationService;
+    protected ActivityLogService $activityLogService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(NotificationService $notificationService, ActivityLogService $activityLogService)
     {
         $this->notificationService = $notificationService;
+        $this->activityLogService = $activityLogService;
     }
 
     public function getCommentByIssue(Issue $issue): Collection
@@ -40,6 +42,7 @@ class CommentService
         $comment->comment = $content;
         $comment->save();
 
+        $this->activityLogService->logCommentAdded($issue, $user, $content);
         $this->notificationService->sendCommentAdded($comment, $user);
 
         // $recipients = collect();
@@ -57,15 +60,19 @@ class CommentService
 
     public function updateComment(Comment $comment, string $content): Comment
     {
+        $oldContent = $comment->comment;
         $comment->comment = $content;
         $comment->save();
-
+        $this->activityLogService->logCommentUpdated($comment->issue, auth()->user(), $oldContent, $content);
         return $comment->fresh('user');
     }
 
     public function deleteComment(Comment $comment): void
     {
+        $content = $comment->comment;
+        $issue = $comment->issue;
         $comment->delete();
+        $this->activityLogService->logCommentDeleted($issue, auth()->user(), $content);
     }
 
 }

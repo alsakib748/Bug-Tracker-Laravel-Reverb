@@ -210,6 +210,22 @@ const menuGroups = [
         name: "Issues",
         path: "/issues",
       },
+      {
+        icon: GridIcon,
+        name: "Notifications",
+        path: "/notifications",
+      },
+      {
+        name: "Setting",
+        icon: GridIcon,
+        subItems: [
+          { name: "Profile", path: "/blank", pro: false },
+          { name: "Activity Logs", path: "/activity-logs", pro: false },
+          { name: "System", path: "/blank", pro: false },
+          // { name: "Black Page", path: "/blank", pro: false },
+          // { name: "404 Page", path: "/error-404", pro: false },
+        ],
+      },
       // {
       //   icon: CalenderIcon,
       //   name: "Calendar",

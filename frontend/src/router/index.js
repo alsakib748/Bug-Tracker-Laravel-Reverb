@@ -19,6 +19,9 @@ import IssuesShow from '@/views/Admin/Issues/Show.vue'
 import NotificationsIndex from '@/views/Admin/Notifications/Index.vue'
 import NotificationsShow from '@/views/Admin/Notifications/Show.vue'
 
+// Import Activity Logs Pages
+import ActivityLogsIndex from '@/views/Admin/ActivityLogs/Index.vue'
+
 // Import Project Members Page
 // import ProjectMembers from '@/views/Admin/ProjectMembers/ProjectMembers.vue'
 
@@ -93,6 +96,12 @@ const routes = [
     path: '/notifications/:id',
     name: 'NotificationsShow',
     component: NotificationsShow,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/activity-logs',
+    name: 'ActivityLogsIndex',
+    component: ActivityLogsIndex,
     meta: { requiresAuth: true },
   },
   {

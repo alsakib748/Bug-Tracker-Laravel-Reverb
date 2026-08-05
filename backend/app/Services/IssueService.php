@@ -16,10 +16,12 @@ class IssueService
 {
 
     protected NotificationService $notificationService;
+    protected ActivityLogService $activityLogService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(NotificationService $notificationService, ActivityLogService $activityLogService)
     {
         $this->notificationService = $notificationService;
+        $this->activityLogService = $activityLogService;
     }
 
     public function getAllIssues(array $filters = [], int $perPage = 15): LengthAwarePaginator
@@ -77,7 +79,7 @@ class IssueService
         ]);
 
         $this->notificationService->sendIssueCreated($issue, $reporter);
-
+        $this->activityLogService->logIssueCreated($issue, auth()->user());
         // Refresh with relations
 
         return $issue->fresh(['project', 'reporter', 'assignee']);
@@ -86,6 +88,8 @@ class IssueService
 
     public function updateIssue(Issue $issue, array $data): Issue
     {
+
+        $old = $issue->getOriginal();
 
         $issue->update([
             'title' => $data['title'] ?? $issue->title,
@@ -96,6 +100,8 @@ class IssueService
             'due_date' => $data['due_date'] ?? $issue->due_date,
             'estimated_hours' => $data['estimated_hours'] ?? $issue->estimated_hours,
         ]);
+
+        $this->activityLogService->logIssueUpdated($issue, auth()->user(), $old, $issue->getAttributes());
 
         return $issue->fresh(['project', 'reporter', 'assignee']);
 
@@ -133,6 +139,8 @@ class IssueService
 
         $issue->save();
 
+        $this->activityLogService->logIssueAssigned($issue, auth()->user(), $assignee);
+
         return $issue->fresh(['project', 'reporter', 'assignee']);
 
     }
@@ -153,6 +161,7 @@ class IssueService
      */
     public function changeStatus(Issue $issue, string $newStatus): Issue
     {
+        $oldStatus = $issue->status;
         $current = IssueStatus::tryFrom($issue->status);
         $new = IssueStatus::tryFrom($newStatus);
 
@@ -193,6 +202,8 @@ class IssueService
 
         $this->notificationService->sendIssueStatusChanged($issue, $current->value, $new->value, auth()->user());
 
+        $this->activityLogService->logIssueStatusChanged($issue, auth()->user(), $oldStatus, $newStatus);
+
         return $issue->fresh(['project', 'reporter', 'assignee']);
 
     }
@@ -210,6 +221,8 @@ class IssueService
 
         $issue->status = IssueStatus::REOPENED;
         $issue->save();
+
+        $this->activityLogService->logIssueReopened($issue, auth()->user());
 
         // TODO: Broadcast event, log activity
 

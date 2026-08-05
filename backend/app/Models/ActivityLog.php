@@ -17,8 +17,16 @@ class ActivityLog extends Model
         'project_id',
         'issue_id',
         'action',
+        'entity_type',
+        'entity_id',
         'description',
-        'ip'
+        'properties',
+        'ip',
+        'user_agent',
+    ];
+
+    protected $casts = [
+        'properties' => 'array',
     ];
 
     public function user()
@@ -34,6 +42,12 @@ class ActivityLog extends Model
     public function issue()
     {
         return $this->belongsTo(Issue::class);
+    }
+
+    // ---- Accessors ----
+    public function getActionLabelAttribute(): string
+    {
+        return \App\Enums\ActivityAction::tryFrom($this->action)?->label() ?? $this->action;
     }
 
 }

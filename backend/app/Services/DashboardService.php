@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ActivityLog;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\Project;
@@ -89,13 +90,28 @@ class DashboardService
                 });
 
             // Combine and sort by created_by descending, then take $limit
-            $activities = $comments->concat($issues)
-                ->sortByDesc('created_at')
-                ->take($limit)
-                ->values()
+            // $activities = $comments->concat($issues)
+            //     ->sortByDesc('created_at')
+            //     ->take($limit)
+            //     ->values()
+            //     ->toArray();
+
+            // return $activities;
+
+            $activities = ActivityLog::with(['user', 'project', 'issue'])
+                ->latest()
+                ->limit($limit)
+                ->get()
+                ->map(function ($log) {
+                    return [
+                        'type' => $log->action,
+                        'user' => $log->user->name ?? 'System',
+                        'description' => $log->description,
+                        'created_at' => $log->created_at->toISOString(),
+                    ];
+                })
                 ->toArray();
 
-            return $activities;
         } catch (\Exception $e) {
             Log::error('Dashboard recent activity error: ' . $e->getMessage());
             return [];

@@ -4,7 +4,7 @@ import api from '@/services/api'
 export const useNotificationStore = defineStore('notifications', {
   state: () => ({
     notifications: [],
-    unreadCount: 0,
+    // unreadCount: 0,
     loading: false,
     pagination: {
       current_page: 1,
@@ -34,7 +34,7 @@ export const useNotificationStore = defineStore('notifications', {
           total: response.data.total,
         }
         //  update unread count
-        this.unreadCount = this.notifications.filter((n) => !n.read_at).length
+        // this.unreadCount = this.notifications.filter((n) => !n.read_at).length
         return response.data
       } catch (error) {
         console.error('Failed to fetch notifications: ', error)

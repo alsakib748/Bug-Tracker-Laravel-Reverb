@@ -12,10 +12,12 @@ class ProjectMemberService
 {
 
     protected NotificationService $notificationService;
+    protected ActivityLogService $activityLogService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(NotificationService $notificationService, ActivityLogService $activityLogService)
     {
         $this->notificationService = $notificationService;
+        $this->activityLogService = $activityLogService;
     }
 
 
@@ -45,7 +47,9 @@ class ProjectMemberService
 
         $user = $project->members();
 
-        $this->notificationService->sendProjectMemberAdded($project, $user, auth()->user());
+        $this->activityLogService->logMemberAdded($project, auth()->user(), $userId);
+
+        $this->notificationService->sendProjectMemberAdded($project, $userId, auth()->user());
 
     }
 
@@ -59,7 +63,12 @@ class ProjectMemberService
             throw new \Exception('Cannot remove the project creator.');
         }
 
+        // $user = $project->members();
+
         $detached = $project->members()->detach($userId);
+
+        $this->activityLogService->logMemberRemoved($project, auth()->user(), $userId);
+
         if ($detached === 0) {
             throw new \Exception('User is not a member of this project.');
         }
