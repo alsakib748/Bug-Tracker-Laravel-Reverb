@@ -112,6 +112,7 @@ class DashboardService
                 })
                 ->toArray();
 
+            return $activities;
         } catch (\Exception $e) {
             Log::error('Dashboard recent activity error: ' . $e->getMessage());
             return [];
