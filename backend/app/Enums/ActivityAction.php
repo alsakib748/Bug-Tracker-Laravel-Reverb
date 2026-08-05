@@ -23,6 +23,7 @@ enum ActivityAction: string
     case COMMENT_UPDATED = 'comment_updated';
     case COMMENT_DELETED = 'comment_deleted';
 
+    // Attachment actions
     case ATTACHMENT_UPLOADED = 'attachment_uploaded';
     case ATTACHMENT_DELETED = 'attachment_deleted';
 

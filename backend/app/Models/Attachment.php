@@ -30,4 +30,22 @@ class Attachment extends Model
         return $this->belongsTo(User::class);
     }
 
+    // Accessor for download URL
+    public function getDownloadUrlAttribute(): string
+    {
+        return route('attachments.download', $this->id);
+    }
+
+    // Accessor for file size (human readable)
+    public function getFileSizeFormattedAttribute(): string
+    {
+        $bytes = $this->file_size;
+        if ($bytes === 0)
+            return '0 B';
+        $k = 1024;
+        $sizes = ['B', 'KB', 'MB', 'GB'];
+        $i = floor(log($bytes) / log($k));
+        return round($bytes / pow($k, $i), 1) . ' ' . $sizes[$i];
+    }
+
 }

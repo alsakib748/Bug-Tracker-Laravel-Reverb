@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\AttachmentController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
@@ -61,6 +62,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/status', [IssueController::class, 'changeStatus']);
         Route::patch('/reopen', [IssueController::class, 'reopen']);
         Route::patch('/close', [IssueController::class, 'close']);
+
+        Route::get('/attachments', [AttachmentController::class, 'index']);
+        Route::post('/attachments', [AttachmentController::class, 'store']);
+    });
+
+    // Attachment Routes
+    Route::prefix('attachments')->group(function () {
+        Route::get('/{attachment}/download', [AttachmentController::class, 'download'])->name('attachments.download');
+        Route::delete('/{attachment}', [AttachmentController::class, 'destroy']);
     });
 
     // Comments
