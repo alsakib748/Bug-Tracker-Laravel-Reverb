@@ -14,11 +14,19 @@ class UserResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $avatar = $this->avatar;
+
+        if ($avatar && !preg_match('/^(https?:)?\/\//', $avatar)) {
+            $avatar = str_starts_with($avatar, 'storage/')
+                ? asset($avatar)
+                : asset('storage/' . ltrim($avatar, '/'));
+        }
+
         return [
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
-            'avatar' => $this->avatar,
+            'avatar' => $avatar,
             'role' => $this->role?->value, // enum value
             'role_label' => $this->role?->label(), // human-readable
             'status' => $this->status?->value,
