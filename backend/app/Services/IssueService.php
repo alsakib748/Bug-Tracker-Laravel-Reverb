@@ -9,10 +9,18 @@ use App\Enums\Severity;
 use App\Models\Issue;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 class IssueService
 {
+
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
 
     public function getAllIssues(array $filters = [], int $perPage = 15): LengthAwarePaginator
     {
@@ -68,6 +76,8 @@ class IssueService
             'estimated_hours' => $data['estimated_hours'] ?? null,
         ]);
 
+        $this->notificationService->sendIssueCreated($issue, $reporter);
+
         // Refresh with relations
 
         return $issue->fresh(['project', 'reporter', 'assignee']);
@@ -113,8 +123,13 @@ class IssueService
 
         // If status if 'open', change to 'assigned'
         if ($issue->status === IssueStatus::OPEN->value) {
-            $issue->status = IssueStatus::ASSIGNED->value;
+            $issue->status = IssueStatus::ASSIGNED;
         }
+
+        // Send notification
+        $assignee = User::find($userId);
+        $notificationService = app(NotificationService::class);
+        $notificationService->sendIssueAssigned($issue, $assignee, auth()->user());
 
         $issue->save();
 
@@ -167,14 +182,16 @@ class IssueService
             throw new \Exception('Cannot set status to "Assigned" without an assignee.');
         }
 
-        $issue->status = $newStatus;
+        $issue->status = $new;
 
         // If closing, set completed_at
-        if ($newStatus === IssueStatus::CLOSED->value) {
-            $issue->completed_at = now();
+        if ($new === IssueStatus::CLOSED) {
+            $issue->completed_at = \Illuminate\Support\Carbon::now();
         }
 
         $issue->save();
+
+        $this->notificationService->sendIssueStatusChanged($issue, $current->value, $new->value, auth()->user());
 
         return $issue->fresh(['project', 'reporter', 'assignee']);
 
@@ -191,7 +208,7 @@ class IssueService
             throw new \Exception('Only resolved issues can be reopened.');
         }
 
-        $issue->status = IssueStatus::REOPENED->value;
+        $issue->status = IssueStatus::REOPENED;
         $issue->save();
 
         // TODO: Broadcast event, log activity
@@ -208,8 +225,8 @@ class IssueService
             throw new \Exception('Only resolved issues can be closed.');
         }
 
-        $issue->status = IssueStatus::CLOSED->value;
-        $issue->completed_at = now();
+        $issue->status = IssueStatus::CLOSED;
+        $issue->completed_at = \Illuminate\Support\Carbon::now();
         $issue->save();
 
         // TODO: Broadcast event, log activity

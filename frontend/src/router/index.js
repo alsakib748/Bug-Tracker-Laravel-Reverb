@@ -15,6 +15,10 @@ import IssuesCreate from '@/views/Admin/Issues/Create.vue'
 import IssuesEdit from '@/views/Admin/Issues/Edit.vue'
 import IssuesShow from '@/views/Admin/Issues/Show.vue'
 
+// Import Notifications Pages
+import NotificationsIndex from '@/views/Admin/Notifications/Index.vue'
+import NotificationsShow from '@/views/Admin/Notifications/Show.vue'
+
 // Import Project Members Page
 // import ProjectMembers from '@/views/Admin/ProjectMembers/ProjectMembers.vue'
 
@@ -77,6 +81,18 @@ const routes = [
     path: '/issues/:id',
     name: 'IssuesShow',
     component: IssuesShow,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/notifications',
+    name: 'NotificationsIndex',
+    component: NotificationsIndex,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/notifications/:id',
+    name: 'NotificationsShow',
+    component: NotificationsShow,
     meta: { requiresAuth: true },
   },
   {

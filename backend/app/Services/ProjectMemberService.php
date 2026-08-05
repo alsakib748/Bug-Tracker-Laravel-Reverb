@@ -4,11 +4,21 @@ namespace App\Services;
 
 use App\Models\Project;
 use App\Models\User;
+use App\Services\NotificationService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ProjectMemberService
 {
+
+    protected NotificationService $notificationService;
+
+    public function __construct(NotificationService $notificationService)
+    {
+        $this->notificationService = $notificationService;
+    }
+
+
 
     /**
      * * Get all members of a project
@@ -32,6 +42,10 @@ class ProjectMemberService
             'role' => $role,
             'joined_at' => now(),
         ]);
+
+        $user = $project->members();
+
+        $this->notificationService->sendProjectMemberAdded($project, $user, auth()->user());
 
     }
 
