@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ActivityAction;
+use App\Events\AttachmentUploaded;
 use App\Models\Attachment;
 use App\Models\Issue;
 use App\Models\User;
@@ -41,12 +42,16 @@ class AttachmentService
             'mime_type' => $file->getMimeType(),
         ]);
 
-        // 4. Log activity (using ActivityAction enum)
+        event(new AttachmentUploaded($attachment));
+
+        // 4. Log activity (correct order)
         $this->activityLogService->log(
             ActivityAction::ATTACHMENT_UPLOADED,
             $user,
             $issue->project,
             $issue,
+            null, // entityType
+            null, // entityId
             "{$user->name} uploaded attachment '{$file->getClientOriginalName()}' to issue #{$issue->id}",
             ['size' => $file->getSize(), 'mime' => $file->getMimeType()]
         );
@@ -91,12 +96,13 @@ class AttachmentService
         // 2. Delete the record
         $attachment->delete();
 
-        // 3. Log activity
         $this->activityLogService->log(
             ActivityAction::ATTACHMENT_DELETED,
             $user,
             $attachment->issue->project,
             $attachment->issue,
+            null,
+            null,
             "{$user->name} deleted attachment '{$attachment->file_name}' from issue #{$attachment->issue->id}",
             ['deleted_file' => $attachment->file_name]
         );

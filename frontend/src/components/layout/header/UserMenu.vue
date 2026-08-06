@@ -2,7 +2,7 @@
   <div class="relative" ref="dropdownRef">
     <button class="flex items-center text-gray-700 dark:text-gray-400" @click.prevent="toggleDropdown">
       <span class="mr-3 overflow-hidden rounded-full h-11 w-11">
-        <img src="/images/user/owner.jpg" alt="User" />
+        <img :src="currentAvatar" :alt="user?.name || 'User'" class="h-11 w-11 object-cover" />
       </span>
 
       <span class="block mr-1 font-medium text-theme-sm">{{ user?.name }} </span>
@@ -53,14 +53,32 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const user = computed(() => authStore.user);
+const defaultAvatar = computed(() => `https://ui-avatars.com/api/?name=${encodeURIComponent(user.value?.name || 'User')}&background=random&size=128`)
+const currentAvatar = computed(() => {
+  const avatar = user.value?.avatar
+
+  if (!avatar) {
+    return defaultAvatar.value
+  }
+
+  if (/^(https?:)?\/\//.test(avatar)) {
+    return avatar
+  }
+
+  if (avatar.startsWith('/')) {
+    return avatar
+  }
+
+  return `/storage/${avatar.replace(/^storage\//, '')}`
+})
 
 const dropdownOpen = ref(false)
 const dropdownRef = ref(null)
 
 const menuItems = [
   { href: '/profile', icon: UserCircleIcon, text: 'Edit profile' },
-  { href: '/chat', icon: SettingsIcon, text: 'Account settings' },
-  { href: '/profile', icon: InfoCircleIcon, text: 'Support' },
+  // { href: '/chat', icon: SettingsIcon, text: 'Account settings' },
+  // { href: '/profile', icon: InfoCircleIcon, text: 'Support' },
 ]
 
 const toggleDropdown = () => {

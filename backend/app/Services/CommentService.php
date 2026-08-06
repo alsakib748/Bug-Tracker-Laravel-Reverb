@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\CommentCreated;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\User;
@@ -41,6 +42,8 @@ class CommentService
         $comment->user_id = $user->id;
         $comment->comment = $content;
         $comment->save();
+
+        event(new CommentCreated($comment));
 
         $this->activityLogService->logCommentAdded($issue, $user, $content);
         $this->notificationService->sendCommentAdded($comment, $user);

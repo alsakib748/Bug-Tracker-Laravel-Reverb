@@ -1,7 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
-// Import Project Pages
+// Import Users Pages
+import UsersIndex from '@/views/Admin/Users/Index.vue'
+import UsersCreate from '@/views/Admin/Users/Create.vue'
+import UsersEdit from '@/views/Admin/Users/Edit.vue'
+import Profile from '@/views/Admin/Profile.vue'
 
 // Import Project Pages
 import ProjectsIndex from '@/views/Admin/Projects/Index.vue'
@@ -36,6 +40,30 @@ const routes = [
     path: '/dashboard',
     name: 'Ecommerce',
     component: () => import('../views/Ecommerce.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/users',
+    name: 'UsersIndex',
+    component: UsersIndex,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/users/create',
+    name: 'UsersCreate',
+    component: UsersCreate,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/users/:id/edit',
+    name: 'UsersEdit',
+    component: UsersEdit,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: Profile,
     meta: { requiresAuth: true },
   },
   {
@@ -112,14 +140,14 @@ const routes = [
       title: 'Calendar',
     },
   },
-  {
-    path: '/profile',
-    name: 'Profile',
-    component: () => import('../views/Others/UserProfile.vue'),
-    meta: {
-      title: 'Profile',
-    },
-  },
+  // {
+  //   path: '/profile',
+  //   name: 'Profile',
+  //   component: () => import('../views/Others/UserProfile.vue'),
+  //   meta: {
+  //     title: 'Profile',
+  //   },
+  // },
   {
     path: '/form-elements',
     name: 'Form Elements',

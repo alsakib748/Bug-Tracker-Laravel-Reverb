@@ -6,6 +6,10 @@ use App\Enums\IssueStatus;
 use App\Enums\IssueType;
 use App\Enums\Priority;
 use App\Enums\Severity;
+use App\Events\IssueAssigned;
+use App\Events\IssueCreated;
+use App\Events\IssueStatusChanged;
+use App\Events\IssueUpdated;
 use App\Models\Issue;
 use App\Models\Project;
 use App\Models\User;
@@ -78,6 +82,8 @@ class IssueService
             'estimated_hours' => $data['estimated_hours'] ?? null,
         ]);
 
+        event(new IssueCreated($issue));
+
         $this->notificationService->sendIssueCreated($issue, $reporter);
         $this->activityLogService->logIssueCreated($issue, auth()->user());
         // Refresh with relations
@@ -139,6 +145,9 @@ class IssueService
 
         $issue->save();
 
+        event(new IssueAssigned($issue));
+        event(new IssueUpdated($issue));
+
         $this->activityLogService->logIssueAssigned($issue, auth()->user(), $assignee);
 
         return $issue->fresh(['project', 'reporter', 'assignee']);
@@ -199,6 +208,9 @@ class IssueService
         }
 
         $issue->save();
+
+
+        event(new IssueStatusChanged($issue, $oldStatus, $newStatus));
 
         $this->notificationService->sendIssueStatusChanged($issue, $current->value, $new->value, auth()->user());
 

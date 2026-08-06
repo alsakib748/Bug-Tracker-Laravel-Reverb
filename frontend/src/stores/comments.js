@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '@/services/api'
+import echo from '@/services/echo'
 
 export const useCommentStore = defineStore('comments', {
   state: () => ({
@@ -57,6 +58,19 @@ export const useCommentStore = defineStore('comments', {
         console.error('Failed to delete comment: ', error)
         throw error
       }
+    },
+    initializeListeners(issueId) {
+      if (!issueId) return
+      echo.private(`private-issue.${issueId}`).listen('comment.created', (data) => {
+        //  Add new comment to the list
+        this.comments.push({
+          id: data.id,
+          comment: data.comment,
+          user_id: data.user_id,
+          user: { name: data.user_name },
+          created_at: data.created_at,
+        })
+      })
     },
   },
 })

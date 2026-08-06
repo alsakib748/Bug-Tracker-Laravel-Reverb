@@ -66,9 +66,12 @@ const authStore = useAuthStore();
 
 onMounted(() => {
   if (authStore.authenticated) {
-    notificationStore.fetchNotifications(1);
+    // Fetch initial notifications
+    notificationStore.fetchNotifications(1)
+    // Initialize real-time listeners
+    notificationStore.initializeListeners()
   }
-});
+})
 
 const { toggleSidebar, toggleMobileSidebar, isMobileOpen } = useSidebar()
 

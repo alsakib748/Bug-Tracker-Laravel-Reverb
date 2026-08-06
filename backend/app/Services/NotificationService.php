@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\NotificationCreated;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\Project;
@@ -16,8 +17,16 @@ class NotificationService
             ->get()
             ->unique('id')
             ->each(function (User $recipient) use ($type, $data) {
-                $recipient->notify(new SystemNotification($type, $data));
+                $notification = $recipient->notify(new SystemNotification($type, $data));
+
+                if ($notification) {
+                    $latestNotification = $recipient->notifications()->latest()->first();
+                    if ($latestNotification) {
+                        event(new NotificationCreated($latestNotification));
+                    }
+                }
             });
+
     }
 
     /**

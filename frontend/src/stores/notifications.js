@@ -1,11 +1,13 @@
 import { defineStore } from 'pinia'
 import api from '@/services/api'
+import echo from '@/services/echo'
+import { useAuthStore } from './auth'
 
 export const useNotificationStore = defineStore('notifications', {
   state: () => ({
     notifications: [],
-    // unreadCount: 0,
     loading: false,
+    listenersInitialized: false, // prevent duplicate listeners
     pagination: {
       current_page: 1,
       last_page: 1,
@@ -50,7 +52,6 @@ export const useNotificationStore = defineStore('notifications', {
         const notify = this.notifications.find((n) => n.id === id)
         if (notify) {
           notify.read_at = new Date().toISOString()
-          this.unreadCount = this.notifications.filter((n) => !n.read_at).length
         }
       } catch (error) {
         console.error('Failed to mark as read: ', error)
@@ -60,7 +61,6 @@ export const useNotificationStore = defineStore('notifications', {
       try {
         await api.patch('/api/notifications/read-all')
         this.notifications.forEach((n) => (n.read_at = new Date().toISOString()))
-        this.unreadCount = 0
       } catch (error) {
         console.error('Failed to mark all as read:', error)
       }
@@ -69,7 +69,6 @@ export const useNotificationStore = defineStore('notifications', {
       try {
         await api.delete(`/api/notifications/${id}`)
         this.notifications = this.notifications.filter((n) => n.id !== id)
-        this.unreadCount = this.notifications.filter((n) => !n.read_at).length
       } catch (error) {
         console.error('Failed to delete notification:', error)
       }
@@ -77,7 +76,40 @@ export const useNotificationStore = defineStore('notifications', {
     // Called when a real-time notification arrives (later)
     addNotification(notification) {
       this.notifications.unshift(notification)
-      if (!notification.read_at) this.unreadCount++
+    },
+    initializeListeners() {
+      // Prevent duplicate listeners
+      if (this.listenersInitialized) return
+
+      const auth = useAuthStore()
+      if (!auth.authenticated || !auth.user) {
+        console.warn('Not authenticated, skipping notification listeners')
+        return
+      }
+
+      try {
+        echo
+          .private(`private-user.${auth.user.id}`)
+          .listen('notification.created', (data) => {
+            console.log('Real-time notification received:', data)
+            // Add notification to the list
+            this.notifications.unshift(data)
+            // If you have a toast notification system, you can show it here
+            // this.showToast(data)
+          })
+          .listen('notification.read', (data) => {
+            console.log('Notification read event:', data)
+            const notify = this.notifications.find((n) => n.id === data.id)
+            if (notify) {
+              notify.read_at = new Date().toISOString()
+            }
+          })
+
+        this.listenersInitialized = true
+        console.log('Notification listeners initialized for user:', auth.user.id)
+      } catch (error) {
+        console.error('Failed to initialize notification listeners:', error)
+      }
     },
   },
 })

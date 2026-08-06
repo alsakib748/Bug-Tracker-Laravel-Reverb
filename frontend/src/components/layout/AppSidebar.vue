@@ -212,11 +212,16 @@ const menuGroups = [
       },
       {
         icon: GridIcon,
+        name: "Users",
+        path: "/users",
+      },
+      {
+        icon: GridIcon,
         name: "Notifications",
         path: "/notifications",
       },
       {
-        name: "Setting",
+        name: "Settings",
         icon: GridIcon,
         subItems: [
           { name: "Profile", path: "/blank", pro: false },

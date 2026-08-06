@@ -1,21 +1,29 @@
 <script setup>
-import AdminLayout from '@/components/layout/AdminLayout.vue';
-import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
-import ComponentCard from '@/components/common/ComponentCard.vue';
-
 import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useIssueStore } from '@/stores/issues';
+import { useAttachmentStore } from '@/stores/attachments';
 import { useProjectStore } from '@/stores/projects';
 import { useCommentStore } from '@/stores/comments';
 import { useAuthStore } from '@/stores/auth';
 import Select from 'primevue/select';
 import Button from 'primevue/button';
 import Swal from 'sweetalert2';
+import { storeToRefs } from 'pinia';
+
+import AdminLayout from '@/components/layout/AdminLayout.vue';
+import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
+import ComponentCard from '@/components/common/ComponentCard.vue';
 
 // ... other imports
 import CommentList from '@/components/comments/CommentList.vue';
 import CommentForm from '@/components/comments/CommentForm.vue';
+
+import AttachmentList from '@/components/attachments/AttachmentList.vue';
+import AttachmentUpload from '@/components/attachments/AttachmentUpload.vue';
+
+const issue = ref(null);
+const loading = ref(false);
 
 const route = useRoute();
 const router = useRouter();
@@ -24,20 +32,26 @@ const issueStore = useIssueStore();
 const projectStore = useProjectStore();
 const commentStore = useCommentStore();
 const authStore = useAuthStore();
+const attachmentStore = useAttachmentStore();
+
+const { attachments, loading: attachmentsLoading } = storeToRefs(attachmentStore);
 
 const comments = ref([]);
 const loadingComments = ref(false);
 const editingComment = ref(null);
 const showCommentForm = ref(false);
 
-const issue = ref(null);
-const loading = ref(false);
 const actionLoading = ref(false);
 const selectedStatus = ref(null);
 const selectedAssignee = ref(null);
 const projectMembers = ref([]);
 
 const currentPageTitle = ref('Issue Details');
+
+const canManageMembers = computed(() => {
+  if (!issue.value) return false;
+  return authStore.isAdmin || authStore.user?.id === issue.value.created_by;
+});
 
 const availableStatuses = computed(() => {
   if (!issue.value) return [];
@@ -159,17 +173,46 @@ const deleteComment = async (commentId) => {
 
 // Load comments when issue loads
 
+const loadAttachments = async () => {
+  if (!issue.value) return;
+  await attachmentStore.fetchAttachments(issue.value.id);
+  // attachmentsLoading.value = true;
+  // try {
+  //   await attachmentStore.fetchAttachments(issue.value.id);
+  //   attachments.value = attachmentStore.attachments;
+  // } finally {
+  //   attachmentsLoading.value = false;
+  // }
+};
+
+const handleUploadAttachment = async (file) => {
+  await attachmentStore.uploadAttachment(issue.value.id, file);
+  // attachments.value = attachmentStore.attachments;
+};
+
+const handleDeleteAttachment = async (id) => {
+  await attachmentStore.deleteAttachment(id);
+  attachments.value = attachmentStore.attachments;
+};
+
+
 const loadIssue = async () => {
   loading.value = true;
   try {
     const data = await issueStore.fetchIssue(route.params.id);
     issue.value = data;
 
+    if (issue.value) {
+      commentStore.initializeListeners(issue.value.id);
+      attachmentStore.initializeListeners(issue.value.id);
+    }
+
     if (data.project) {
       const members = await projectStore.fetchMembers(data.project.id);
       projectMembers.value = members;
     }
     await loadComments();
+    await loadAttachments();
   } catch (error) {
     console.error('Error loading issue: ', error);
     router.push('/issues');
@@ -202,6 +245,7 @@ onMounted(loadIssue);
           <div><span class="font-medium">Estimated Hours: </span> {{ issue.estimated_hours || 'Not set' }}</div>
         </div>
         <hr class="my-4" />
+        <h1 class="text-xl text-gray-700">Issue Assign To:</h1>
         <div class="flex flex-wrap gap-2">
           <!-- Status Change -->
           <Select v-model="selectedStatus" :options="availableStatuses" optionLabel="label" optionValue="value"
@@ -221,12 +265,25 @@ onMounted(loadIssue);
             class="bg-gray-600 text-white px-4 py-2 rounded" />
         </div>
 
+
+        <h1 class="text-xl text-gray-700">Issue Image/Screenshot:</h1>
+        <AttachmentList :attachments="attachments" :loading="attachmentsLoading" @delete="handleDeleteAttachment" />
+        <AttachmentUpload @upload="handleUploadAttachment" />
+
+        <h1 class="text-xl text-gray-700">Comments:</h1>
         <CommentList :comments="comments" :loading="loadingComments" @edit="startEdit" @delete="deleteComment" />
 
         <CommentForm :editing="!!editingComment" :initialContent="editingComment ? editingComment.comment : ''"
           @submit="handleCommentSubmit" @cancelEdit="cancelEdit" />
 
       </ComponentCard>
+    </div>
+    <div v-else>
+      <center>
+        <div class="" style="margin-top: 60px;">
+          <i class="pi pi-spin pi-spinner" style="font-size: 4rem"></i>
+        </div>
+      </center>
     </div>
   </AdminLayout>
 </template>

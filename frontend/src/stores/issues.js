@@ -1,5 +1,7 @@
 import { defineStore } from 'pinia'
 import api from '@/services/api'
+import echo from '@/services/echo'
+import { useAuthStore } from './auth'
 
 export const useIssueStore = defineStore('issues', {
   state: () => ({
@@ -99,6 +101,23 @@ export const useIssueStore = defineStore('issues', {
     async closeIssue(id) {
       const response = await api.patch(`/api/issues/${id}/close`)
       return response.data.data
+    },
+
+    initializeListeners() {
+      const auth = useAuthStore()
+      if (!auth.authenticated) return
+
+      // Listen for user-specific events (issue assigned)
+      echo.private(`private-user.${auth.user.id}`).listen('issue.assigned', (data) => {
+        // Update local issue list or fetch fresh ?
+        // For simplicity, update the relevant issue in th list
+        const index = this.issues.findIndex((i) => i.id === data.id)
+        if (index !== -1) {
+          // Update the issue's assignee if present
+          this.issues[index].assigned_to = data.assigned_to
+        }
+        // Or you can fetch list: this.fetchIssues();
+      })
     },
   },
 })
