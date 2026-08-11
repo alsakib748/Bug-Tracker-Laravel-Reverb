@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import api, { getCsrfToken, resetCsrfToken } from '@/services/api'
+import { useNotificationStore } from './notifications'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -15,21 +16,21 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(credentials) {
       this.loading = true
+
       try {
         // 1. Get CSRF cookie (cached after first call)
         await getCsrfToken()
 
         // 2. Login
-        const result = await api.post('/api/login', credentials)
+        // const result = await api.post('/api/login', credentials)
+        await api.post('/login', credentials)
 
-        if (result) {
-          this.authenticated = true
+        this.authenticated = true
 
-          // 3. Fetch user
-          await this.getUser()
+        // 3. Fetch user
+        await this.getUser()
 
-          return true
-        }
+        return true
       } catch (error) {
         console.error('Login failed: ', error)
         return false
@@ -39,8 +40,11 @@ export const useAuthStore = defineStore('auth', {
     },
     async getUser() {
       try {
-        const response = await api.get('/api/user')
-        this.user = response.data
+        // const response = await api.get('/api/user')
+        const response = await api.get('/user')
+        // Normalize common response shapes so `user` is always the user object
+        // Support: { data: user }, { user: user }, or direct user object
+        this.user = response.data?.data ?? response.data?.user ?? response.data
         this.authenticated = true
         // console.log(this.user.name)
         return true
@@ -76,7 +80,14 @@ export const useAuthStore = defineStore('auth', {
     async logout() {
       try {
         // await getCsrfToken()
-        await api.post('/api/logout')
+        // await api.post('/api/logout')
+        await api.post('/logout')
+
+        // Reset notification listeners so the next login can re-register
+        try {
+          const notificationStore = useNotificationStore()
+          notificationStore.listenersInitialized = false
+        } catch (_) {}
 
         // Clear auth state
         this.user = null

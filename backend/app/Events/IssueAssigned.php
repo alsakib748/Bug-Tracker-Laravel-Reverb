@@ -15,14 +15,13 @@ class IssueAssigned implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public Issue $issue;
+    // public Issue $issue;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(Issue $issue)
+    public function __construct(public Issue $issue, public int $assignedTo)
     {
-        $this->issue = $issue;
     }
 
     /**
@@ -30,9 +29,16 @@ class IssueAssigned implements ShouldBroadcast
      *
      * @return array<int, Channel>
      */
-    public function broadcastOn(): Channel
+    public function broadcastOn(): array
     {
-        return new Channel('private-user.' . $this->issue->assigned_to);
+        return [
+            new PrivateChannel(
+                'issue.' . $this->issue->id,
+            ),
+            new PrivateChannel(
+                'user.' . $this->assignedTo
+            )
+        ];
     }
 
     public function broadcastAs(): string
@@ -42,11 +48,15 @@ class IssueAssigned implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        // return [
+        //     'id' => $this->issue->id,
+        //     'title' => $this->issue->title,
+        //     'project_id' => $this->issue->project_id,
+        //     'assigned_by' => auth()->user()?->name,
+        // ];
         return [
-            'id' => $this->issue->id,
-            'title' => $this->issue->title,
-            'project_id' => $this->issue->project_id,
-            'assigned_by' => auth()->user()?->name,
+            'issue_id' => $this->issue->id,
+            'assigned_to' => $this->assignedTo,
         ];
     }
 

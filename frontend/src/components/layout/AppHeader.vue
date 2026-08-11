@@ -49,7 +49,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import { useNotificationStore } from '@/stores/notifications';
 import { useAuthStore } from '@/stores/auth';
 import { useSidebar } from '@/composables/useSidebar'
@@ -64,14 +64,17 @@ import NotificationDropdown from '@/components/notifications/NotificationDropdow
 const notificationStore = useNotificationStore();
 const authStore = useAuthStore();
 
-onMounted(() => {
-  if (authStore.authenticated) {
-    // Fetch initial notifications
-    notificationStore.fetchNotifications(1)
-    // Initialize real-time listeners
-    notificationStore.initializeListeners()
-  }
-})
+// Register listeners whenever auth becomes ready (covers initial mount + login after logout)
+watch(
+  () => authStore.authenticated && !!authStore.user?.id,
+  async (ready) => {
+    if (ready) {
+      notificationStore.fetchNotifications(1)
+      await notificationStore.initializeListeners()
+    }
+  },
+  { immediate: true }
+)
 
 const { toggleSidebar, toggleMobileSidebar, isMobileOpen } = useSidebar()
 

@@ -46,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, computed } from 'vue';
+import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { useUserStore } from '@/stores/users';
 import AdminLayout from '@/components/layout/AdminLayout.vue';
@@ -76,11 +76,16 @@ const errors = reactive({});
 const avatarFile = ref(null);
 
 const loadProfile = () => {
-  if (user.value) {
-    form.name = user.value.name;
-    form.email = user.value.email;
-    avatarPreview.value = null;
-  }
+  const u = user.value;
+  if (!u) return;
+
+  // support multiple response shapes: user, { data: user }, { user: { ... } }
+  const payload = u.data ?? u.user ?? u;
+
+  form.name = payload?.name || '';
+  form.email = payload?.email || '';
+  // do not overwrite password field
+  avatarPreview.value = null;
 };
 
 const onFileChange = (event) => {
@@ -112,8 +117,13 @@ const submitForm = async () => {
     }
 
     const updated = await userStore.updateProfile(data);
-    // Update auth store
-    authStore.user = updated;
+    // Refresh auth store from server to ensure full, consistent user object
+    try {
+      await authStore.getUser();
+    } catch (_) {
+      // fallback to returned data if refresh fails
+      authStore.user = updated;
+    }
     avatarFile.value = null;
     avatarPreview.value = null;
     Swal.fire('Success', 'Profile updated successfully.', 'success');
@@ -131,5 +141,9 @@ const submitForm = async () => {
   }
 };
 
+// Populate form when component mounts and whenever auth user changes
 onMounted(loadProfile);
+watch(user, (val) => {
+  if (val) loadProfile();
+}, { immediate: true });
 </script>

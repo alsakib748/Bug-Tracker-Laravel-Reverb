@@ -12,7 +12,8 @@ export const useAttachmentStore = defineStore('attachments', {
     async fetchAttachments(issueId) {
       this.loading = true
       try {
-        const response = await api.get(`/api/issues/${issueId}/attachments`)
+        // const response = await api.get(`/api/issues/${issueId}/attachments`)
+        const response = await api.get(`/issues/${issueId}/attachments`)
         this.attachments = response.data.data
         return response.data.data
       } catch (error) {
@@ -27,7 +28,10 @@ export const useAttachmentStore = defineStore('attachments', {
       try {
         const formData = new FormData()
         formData.append('file', file)
-        const response = await api.post(`/api/issues/${issueId}/attachments`, formData, {
+        // const response = await api.post(`/api/issues/${issueId}/attachments`, formData, {
+        //   headers: { 'Content-Type': 'multipart/form-data' },
+        // })
+        const response = await api.post(`/issues/${issueId}/attachments`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
         const newAtt = response.data.data
@@ -42,7 +46,8 @@ export const useAttachmentStore = defineStore('attachments', {
     },
     async deleteAttachment(attachmentId) {
       try {
-        await api.delete(`/api/attachments/${attachmentId}`)
+        // await api.delete(`/api/attachments/${attachmentId}`)
+        await api.delete(`/attachments/${attachmentId}`)
         this.attachments = this.attachments.filter((a) => a.id !== attachmentId)
       } catch (error) {
         console.error('Failed to delete attachment:', error)
@@ -51,14 +56,32 @@ export const useAttachmentStore = defineStore('attachments', {
     },
     initializeListeners(issueId) {
       if (!issueId) return
+
       echo
-        .private(`private-issue.${issueId}`)
-        .listen('attachment.uploaded', (data) => {
-          this.attachments.push(data)
+        .private(`issue.${issueId}`)
+
+        .listen('.attachment.uploaded', (event) => {
+          console.log('Attachment uploaded:', event)
+
+          const attachment = event.attachment
+
+          if (!attachment) return
+
+          const exists = this.attachments.some((item) => item.id === attachment.id)
+
+          if (!exists) {
+            this.attachments.unshift(attachment)
+          }
         })
-        .listen('attachment.delete', (data) => {
-          this.attachments = this.attachments.filter((a) => a.id !== data.id)
+
+        .listen('.attachment.deleted', (event) => {
+          console.log('Attachment deleted:', event)
+
+          this.attachments = this.attachments.filter((item) => item.id !== event.attachment_id)
         })
+    },
+    stopListeners(issueId) {
+      echo.leave(`issue.${issueId}`)
     },
   },
 })

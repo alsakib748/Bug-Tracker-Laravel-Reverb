@@ -16,7 +16,10 @@ export const useActivityLogStore = defineStore('activityLogs', {
     async fetchLogs(filters = {}, page = 1) {
       this.loading = true
       try {
-        const response = await api.get('/api/activity-logs', {
+        // const response = await api.get('/api/activity-logs', {
+        //   params: { ...filters, page },
+        // })
+        const response = await api.get('/activity-logs', {
           params: { ...filters, page },
         })
         this.logs = response.data.data

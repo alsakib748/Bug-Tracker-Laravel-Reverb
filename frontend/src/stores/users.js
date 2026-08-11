@@ -17,7 +17,8 @@ export const useUserStore = defineStore('users', {
     async fetchUsers(params = {}) {
       this.loading = true
       try {
-        const response = await api.get('/api/users', { params })
+        // const response = await api.get('/api/users', { params })
+        const response = await api.get('/users', { params })
         this.users = [...(response.data.data || [])]
         this.pagination = {
           current_page: response.data.meta?.current_page || 1,
@@ -36,7 +37,8 @@ export const useUserStore = defineStore('users', {
     async fetchUser(id) {
       this.loading = true
       try {
-        const response = await api.get(`/api/users/${id}`)
+        // const response = await api.get(`/api/users/${id}`)
+        const response = await api.get(`/users/${id}`)
         this.user = response.data.data
         return response.data.data
       } catch (error) {
@@ -49,7 +51,8 @@ export const useUserStore = defineStore('users', {
     async createUser(data) {
       this.loading = true
       try {
-        const response = await api.post('/api/users', data)
+        // const response = await api.post('/api/users', data)
+        const response = await api.post('/users', data)
         return response.data.data
       } catch (error) {
         console.error('Failed to create user:', error)
@@ -61,7 +64,8 @@ export const useUserStore = defineStore('users', {
     async updateUser(id, data) {
       this.loading = true
       try {
-        const response = await api.put(`/api/users/${id}`, data)
+        // const response = await api.put(`/api/users/${id}`, data)
+        const response = await api.put(`/users/${id}`, data)
         return response.data.data
       } catch (error) {
         console.error('Failed to update user:', error)
@@ -72,7 +76,8 @@ export const useUserStore = defineStore('users', {
     },
     async deleteUser(id) {
       try {
-        await api.delete(`/api/users/${id}`)
+        // await api.delete(`/api/users/${id}`)
+        await api.delete(`/users/${id}`)
       } catch (error) {
         console.error('Failed to delete user:', error)
         throw error
@@ -81,7 +86,8 @@ export const useUserStore = defineStore('users', {
     // Profile actions
     async updateProfile(data) {
       try {
-        const response = await api.post('/api/user/profile', data)
+        // const response = await api.post('/api/user/profile', data)
+        const response = await api.post('/user/profile', data)
         return response.data.data
       } catch (error) {
         console.error('Failed to update profile:', error)
@@ -90,7 +96,8 @@ export const useUserStore = defineStore('users', {
     },
     async fetchProfile() {
       try {
-        const response = await api.get('/api/user/profile')
+        // const response = await api.get('/api/user/profile')
+        const response = await api.get('/user/profile')
         return response.data.data
       } catch (error) {
         console.error('Failed to fetch profile:', error)

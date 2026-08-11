@@ -11,19 +11,31 @@ use App\Notifications\SystemNotification;
 
 class NotificationService
 {
-    private function notifyProjectMembers(Project $project, string $type, array $data): void
+    private function notifyProjectMembers(Project $project, string $type, array $data, ?int $excludeUserId = null): void
     {
         $project->members()
             ->get()
             ->unique('id')
-            ->each(function (User $recipient) use ($type, $data) {
-                $notification = $recipient->notify(new SystemNotification($type, $data));
+            ->each(function (User $recipient) use ($type, $data, $excludeUserId) {
+                if (
+                    $excludeUserId !== null &&
+                    $recipient->id === $excludeUserId
+                ) {
+                    return;
+                }
+
+                $recipient->notify(
+                    new SystemNotification($type, $data)
+                );
+
+                $notification = $recipient->notifications()
+                    ->latest('created_at')
+                    ->first();
 
                 if ($notification) {
-                    $latestNotification = $recipient->notifications()->latest()->first();
-                    if ($latestNotification) {
-                        event(new NotificationCreated($latestNotification));
-                    }
+                    event(
+                        new NotificationCreated($notification)
+                    );
                 }
             });
 
@@ -131,8 +143,15 @@ class NotificationService
         ];
 
         $member->notify(new SystemNotification('project_member_added', $data));
+
+        $notification = $member->notifications()
+            ->latest('created_at')
+            ->first();
+
+        if ($notification) {
+            event(new NotificationCreated($notification));
+        }
+
     }
-
-
 
 }

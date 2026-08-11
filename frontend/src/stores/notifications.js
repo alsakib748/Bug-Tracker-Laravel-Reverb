@@ -22,7 +22,8 @@ export const useNotificationStore = defineStore('notifications', {
     async fetchNotifications(page = 1, append = false) {
       this.loading = true
       try {
-        const response = await api.get('/api/notifications/', { params: { page } })
+        // const response = await api.get('/api/notifications/', { params: { page } })
+        const response = await api.get('/notifications/', { params: { page } })
         if (append) {
           this.notifications = [...this.notifications, ...response.data.data]
         } else {
@@ -36,7 +37,6 @@ export const useNotificationStore = defineStore('notifications', {
           total: response.data.total,
         }
         //  update unread count
-        // this.unreadCount = this.notifications.filter((n) => !n.read_at).length
         return response.data
       } catch (error) {
         console.error('Failed to fetch notifications: ', error)
@@ -48,7 +48,8 @@ export const useNotificationStore = defineStore('notifications', {
 
     async markAsRead(id) {
       try {
-        await api.patch(`/api/notifications/${id}/read`)
+        // await api.patch(`/api/notifications/${id}/read`)
+        await api.patch(`/notifications/${id}/read`)
         const notify = this.notifications.find((n) => n.id === id)
         if (notify) {
           notify.read_at = new Date().toISOString()
@@ -59,7 +60,8 @@ export const useNotificationStore = defineStore('notifications', {
     },
     async markAllAsRead() {
       try {
-        await api.patch('/api/notifications/read-all')
+        // await api.patch('/api/notifications/read-all')
+        await api.patch('/notifications/read-all')
         this.notifications.forEach((n) => (n.read_at = new Date().toISOString()))
       } catch (error) {
         console.error('Failed to mark all as read:', error)
@@ -67,7 +69,8 @@ export const useNotificationStore = defineStore('notifications', {
     },
     async deleteNotification(id) {
       try {
-        await api.delete(`/api/notifications/${id}`)
+        // await api.delete(`/api/notifications/${id}`)
+        await api.delete(`/notifications/${id}`)
         this.notifications = this.notifications.filter((n) => n.id !== id)
       } catch (error) {
         console.error('Failed to delete notification:', error)
@@ -77,19 +80,36 @@ export const useNotificationStore = defineStore('notifications', {
     addNotification(notification) {
       this.notifications.unshift(notification)
     },
-    initializeListeners() {
+    async initializeListeners() {
       // Prevent duplicate listeners
       if (this.listenersInitialized) return
 
       const auth = useAuthStore()
-      if (!auth.authenticated || !auth.user) {
+      // Guard against partial auth state (e.g., user object exists but id not yet set,
+      // which would subscribe to "user.undefined" and trigger 403 on broadcasting auth)
+      if (!auth.authenticated || !auth.user?.id) {
         console.warn('Not authenticated, skipping notification listeners')
         return
       }
 
+      // Ensure CSRF cookie is fresh before /api/broadcasting/auth
       try {
+        const { getCsrfToken } = await import('@/services/api')
+        await getCsrfToken()
+      } catch (_) {}
+
+      try {
+        console.log('Subscribing to private channel for user:', auth.user.id)
+        console.log(
+          'Current XSRF token:',
+          (function () {
+            const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/)
+            return m ? decodeURIComponent(m[1]) : null
+          })(),
+        )
+
         echo
-          .private(`private-user.${auth.user.id}`)
+          .private(`user.${auth.user.id}`)
           .listen('notification.created', (data) => {
             console.log('Real-time notification received:', data)
             // Add notification to the list

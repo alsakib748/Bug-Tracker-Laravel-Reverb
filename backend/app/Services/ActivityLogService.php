@@ -43,6 +43,7 @@ class ActivityLogService
             'ip' => $ip,
             'user_agent' => $userAgent,
         ]);
+
     }
 
     // ---- Convenience helpers ----

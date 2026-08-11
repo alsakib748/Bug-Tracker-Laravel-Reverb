@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useIssueStore } from '@/stores/issues';
 import { useAttachmentStore } from '@/stores/attachments';
@@ -21,6 +21,8 @@ import CommentForm from '@/components/comments/CommentForm.vue';
 
 import AttachmentList from '@/components/attachments/AttachmentList.vue';
 import AttachmentUpload from '@/components/attachments/AttachmentUpload.vue';
+
+import echo from '@/services/echo';
 
 const issue = ref(null);
 const loading = ref(false);
@@ -134,7 +136,7 @@ const closeIssue = async () => {
 // comments
 const loadComments = async () => {
   if (!issue.value) return;
-  loadComments.value = true;
+  loadingComments.value = true;
   try {
     comments.value = await commentStore.fetchComments(issue.value.id);
   } catch (error) {
@@ -221,7 +223,135 @@ const loadIssue = async () => {
   }
 }
 
-onMounted(loadIssue);
+const subscribeToIssueChannel = () => {
+  if (!issue.value?.id) {
+    console.warn('Cannot subscribe: issue ID missing')
+    return
+  }
+
+  const issueId = issue.value.id
+
+  console.log('Subscribing to issue channel:', `issue.${issueId}`)
+
+  echo
+    .private(`issue.${issueId}`)
+
+    // Issue status
+    .listen('.issue.status.changed', (event) => {
+      console.log('REALTIME: status changed', event)
+
+      if (issue.value?.id === event.issue_id) {
+        issue.value.status = event.new_status
+      }
+    })
+
+    // Comment
+    .listen('.comment.created', (event) => {
+      console.log('REALTIME: comment created', event)
+
+      const comment = event.comment
+
+      if (!comment) {
+        return
+      }
+
+      const exists = comments.value.some(
+        item => item.id === comment.id
+      )
+
+      if (!exists) {
+        comments.value.push(comment)
+      }
+    })
+
+    // Attachment uploaded
+    .listen('.attachment.uploaded', (event) => {
+      console.log('REALTIME: attachment uploaded', event)
+
+      if (event.attachment) {
+        attachments.value.unshift(event.attachment)
+      }
+    })
+
+    // Attachment deleted
+    .listen('.attachment.deleted', (event) => {
+      console.log('REALTIME: attachment deleted', event)
+
+      attachments.value = attachments.value.filter(
+        item => item.id !== event.attachment_id
+      )
+    })
+}
+
+onMounted(async () => {
+
+  await authStore.checkAuth()
+
+  if (!authStore.authenticated) {
+    console.log('User is not authenticated')
+    return
+  }
+
+  const data = await issueStore.fetchIssue(route.params.id)
+  issue.value = data
+
+  // await loadIssue()
+
+  if (!issue.value) {
+    return
+  }
+
+  const issueId = issue.value.id
+
+  // 4. Load project members
+  if (issue.value.project?.id) {
+
+    projectMembers.value =
+      await projectStore.fetchMembers(
+        issue.value.project.id
+      )
+  }
+
+  // 5. Load comments
+  await loadComments()
+
+  // 6. Load attachments
+  await loadAttachments()
+
+  if (issue.value?.id) {
+    echo.leave(`issue.${issue.value.id}`)
+  }
+
+  subscribeToIssueChannel()
+
+  // console.log(
+  //   'Starting real-time listeners for:',
+  //   issueId
+  // )
+
+  // issueStore.listenToIssue(issueId)
+
+  // commentStore.initializeListeners(issueId)
+
+  // attachmentStore.initializeListeners(issueId)
+
+});
+
+onUnmounted(() => {
+
+  if (!issue.value) {
+    return
+  }
+
+  const issueId = issue.value.id
+
+  issueStore.stopListeningToIssue(issueId)
+
+  commentStore.stopListeners?.(issueId)
+
+  attachmentStore.stopListeners?.(issueId)
+})
+
 
 </script>
 
@@ -279,11 +409,9 @@ onMounted(loadIssue);
       </ComponentCard>
     </div>
     <div v-else>
-      <center>
-        <div class="" style="margin-top: 60px;">
-          <i class="pi pi-spin pi-spinner" style="font-size: 4rem"></i>
-        </div>
-      </center>
+      <div class="flex justify-center" style="margin-top: 60px;">
+        <i class="pi pi-spin pi-spinner" style="font-size: 4rem"></i>
+      </div>
     </div>
   </AdminLayout>
 </template>

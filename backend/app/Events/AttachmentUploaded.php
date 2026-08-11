@@ -15,14 +15,13 @@ class AttachmentUploaded implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public Attachment $attachment;
+    // public Attachment $attachment;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(Attachment $attachment)
+    public function __construct(public Attachment $attachment)
     {
-        $this->attachment = $attachment;
     }
 
     /**
@@ -30,9 +29,11 @@ class AttachmentUploaded implements ShouldBroadcast
      *
      * @return array<int, Channel>
      */
-    public function broadcastOn(): Channel
+    public function broadcastOn(): array
     {
-        return new Channel('private-issue.' . $this->attachment->issue_id);
+        return [
+            new PrivateChannel('issue.' . $this->attachment->issue_id)
+        ];
     }
 
     public function broadcastAs(): string
@@ -42,12 +43,15 @@ class AttachmentUploaded implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        // return [
+        //     'id' => $this->attachment->id,
+        //     'file_name' => $this->attachment->file_name,
+        //     'file_size' => $this->attachment->file_size,
+        //     'user_id' => $this->attachment->user_id,
+        //     'created_at' => $this->attachment->created_at->toISOString(),
+        // ];
         return [
-            'id' => $this->attachment->id,
-            'file_name' => $this->attachment->file_name,
-            'file_size' => $this->attachment->file_size,
-            'user_id' => $this->attachment->user_id,
-            'created_at' => $this->attachment->created_at->toISOString(),
+            'attachment' => $this->attachment->toArray(),
         ];
     }
 

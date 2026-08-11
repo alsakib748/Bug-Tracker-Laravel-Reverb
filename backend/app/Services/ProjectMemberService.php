@@ -40,16 +40,19 @@ class ProjectMemberService
             throw new \Exception('User is already a member of this project.');
         }
 
+        $newMember = User::find($userId);
+        if (!$newMember) {
+            throw new \Exception('User not found.');
+        }
+
         $project->members()->attach($userId, [
             'role' => $role,
             'joined_at' => now(),
         ]);
 
-        $user = $project->members();
+        $this->activityLogService->logMemberAdded($project, auth()->user(), $newMember);
 
-        $this->activityLogService->logMemberAdded($project, auth()->user(), $userId);
-
-        $this->notificationService->sendProjectMemberAdded($project, $userId, auth()->user());
+        $this->notificationService->sendProjectMemberAdded($project, $newMember, auth()->user());
 
     }
 
@@ -63,11 +66,14 @@ class ProjectMemberService
             throw new \Exception('Cannot remove the project creator.');
         }
 
-        // $user = $project->members();
+        $removedMember = User::find($userId);
+        if (!$removedMember) {
+            throw new \Exception('User not found.');
+        }
 
         $detached = $project->members()->detach($userId);
 
-        $this->activityLogService->logMemberRemoved($project, auth()->user(), $userId);
+        $this->activityLogService->logMemberRemoved($project, auth()->user(), $removedMember);
 
         if ($detached === 0) {
             throw new \Exception('User is not a member of this project.');

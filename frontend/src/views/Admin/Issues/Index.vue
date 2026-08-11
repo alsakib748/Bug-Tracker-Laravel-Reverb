@@ -35,6 +35,13 @@
               </router-link>
             </template>
           </Column>
+          <Column field="project" header="Project" sortable>
+            <template #body="{ data }">
+              <router-link :to="`/projects/${data.project?.id}`" class="text-blue-700 hover:underline">
+                {{ data.project?.name }}
+              </router-link>
+            </template>
+          </Column>
           <Column field="status" header="Status" sortable>
             <template #body="{ data }">
               <span

@@ -28,8 +28,8 @@
         <div v-else class="text-center py-8 text-gray-500">No project data available.</div>
       </ComponentCard>
       <!-- Project members component -->
-      <ProjectMembers v-if="project" :projectId="project.id" :projectCreatorId="project.created_by?.id"
-        :canManage="canManageMembers" />
+      <ProjectMembers v-if="project" :projectId="project.id"
+        :projectCreatorId="(project.created_by?.id ?? project.created_by)" :canManage="canManageMembers" />
     </div>
   </AdminLayout>
 </template>
@@ -59,7 +59,11 @@ const currentPageTitle = ref('Project Details');
 
 const canManageMembers = computed(() => {
   if (!project.value) return false;
-  return authStore.isAdmin || authStore.user?.id === project.value.created_by;
+  // created_by comes back from ProjectResource as a User object (when 'creator'
+  // is eager-loaded), so compare against .id, not the object itself. This
+  // allows both admins and the project creator to manage members.
+  const creatorId = project.value.created_by?.id ?? project.value.created_by;
+  return authStore.isAdmin || authStore.user?.id === creatorId;
 });
 
 const loadProject = async () => {
@@ -69,6 +73,9 @@ const loadProject = async () => {
     const data = await projectStore.fetchProject(route.params.id);
     project.value = data;
     // console.log(project.value);
+    // console.log('Project loaded:', project.value);
+    // console.log('Current user:', authStore.user);
+    // console.log('canManageMembers:', canManageMembers.value);
   } catch (err) {
     console.error('Failed to load projects: ', err);
     // router.push('/projects');

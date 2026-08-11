@@ -42,7 +42,7 @@ class ProjectMemberController extends Controller
         try {
             $this->memberService->addMember(
                 $project,
-                $request->user_id,
+                (int) $request->user_id,
                 $request->role
             );
 
@@ -60,10 +60,10 @@ class ProjectMemberController extends Controller
         // $this->authorize('manageMembers', $project);
 
         try {
-            $this->memberService->removeMember($project, $user->id);
+            $this->memberService->removeMember($project, (int) $user->id);
             return response()->json(['message' => 'Member removed successfully.']);
         } catch (\Exception $e) {
-            return response()->json(['message', $e->getMessage()], 422);
+            return response()->json(['message' => $e->getMessage()], 422);
         }
 
     }

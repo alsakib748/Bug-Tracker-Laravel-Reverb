@@ -33,7 +33,16 @@ class CommentService
 
     public function createComment(Issue $issue, User $user, string $content): Comment
     {
-        if (!$issue->project->members()->where('user_id', $user->id)->exists()) {
+
+        // Allow admins to comment on any issue, project members to comment on
+        // issues in their project, and the issue reporter/assignee regardless
+        // of membership. Mirrors the access policy of IssueController::show,
+        // which doesn't restrict by membership.
+        $isMember = $issue->project->members()->where('user_id', $user->id)->exists();
+        $isCreatorOrAssignee = $issue->reporter_id === $user->id || $issue->assigned_to === $user->id;
+        $isAdmin = ($user->role?->value ?? null) === 'admin';
+
+        if (!$isMember && !$isCreatorOrAssignee && !$isAdmin) {
             throw new \Exception('You are not a member of this project.');
         }
 
@@ -43,7 +52,7 @@ class CommentService
         $comment->comment = $content;
         $comment->save();
 
-        event(new CommentCreated($comment));
+        event(new CommentCreated($comment->fresh()));
 
         $this->activityLogService->logCommentAdded($issue, $user, $content);
         $this->notificationService->sendCommentAdded($comment, $user);

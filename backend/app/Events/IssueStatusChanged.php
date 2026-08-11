@@ -15,18 +15,18 @@ class IssueStatusChanged implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public Issue $issue;
-    public string $oldStatus;
-    public string $newStatus;
+    // public Issue $issue;
+    // public string $oldStatus;
+    // public string $newStatus;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(Issue $issue, string $oldStatus, string $newStatus)
+    public function __construct(public Issue $issue, public string $oldStatus, public string $newStatus)
     {
-        $this->issue = $issue;
-        $this->oldStatus = $oldStatus;
-        $this->newStatus = $newStatus;
+        // $this->issue = $issue;
+        // $this->oldStatus = $oldStatus;
+        // $this->newStatus = $newStatus;
     }
 
     /**
@@ -34,20 +34,29 @@ class IssueStatusChanged implements ShouldBroadcast
      *
      * @return array<int, Channel>
      */
-    public function broadcastOn(): Channel
+    public function broadcastOn(): array
     {
-        return new Channel('private-issue.' . $this->issue->id);
+        return [
+            new PrivateChannel(
+                'issue.' . $this->issue->id
+            ),
+
+            new PrivateChannel(
+                'project.' . $this->issue->project_id
+            ),
+        ];
     }
 
     public function broadcastAs(): string
     {
-        return 'issue.status_changed';
+        // return 'issue.status_changed';
+        return 'issue.status.changed';
     }
 
     public function broadcastWith(): array
     {
         return [
-            'id' => $this->issue->id,
+            'issue_id' => $this->issue->id,
             'old_status' => $this->oldStatus,
             'new_status' => $this->newStatus,
             'assignee' => $this->issue->assignee?->name,

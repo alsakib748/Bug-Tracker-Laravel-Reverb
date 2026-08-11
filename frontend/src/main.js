@@ -21,6 +21,9 @@ import Aura from '@primevue/themes/aura'
 // PrimeIcons
 import 'primeicons/primeicons.css'
 
+import axios from 'axios'
+import api from './services/api'
+
 const app = createApp(App)
 const pinia = createPinia()
 

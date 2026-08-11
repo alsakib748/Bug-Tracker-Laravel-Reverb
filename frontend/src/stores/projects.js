@@ -18,7 +18,8 @@ export const useProjectStore = defineStore('projects', {
       this.loading = true
 
       try {
-        const response = await api.get('/api/projects', { params })
+        // const response = await api.get('/api/projects', { params })
+        const response = await api.get('/projects', { params })
         // console.log('API response: ', response.data)
         this.projects = response.data.data
         this.pagination.total = this.projects.length
@@ -34,7 +35,8 @@ export const useProjectStore = defineStore('projects', {
       this.loading = true
 
       try {
-        const response = await api.get('/api/projects', { params })
+        // const response = await api.get('/api/projects', { params })
+        const response = await api.get('/projects', { params })
         this.projects = response.data.data
         return response.data
       } catch (error) {
@@ -47,7 +49,8 @@ export const useProjectStore = defineStore('projects', {
     async createProject(data) {
       this.loading = true
       try {
-        const response = await api.post('/api/projects', data)
+        // const response = await api.post('/api/projects', data)
+        const response = await api.post('/projects', data)
         return response.data.data
       } catch (error) {
         console.error('Failed to create project: ', error)
@@ -59,7 +62,8 @@ export const useProjectStore = defineStore('projects', {
     async fetchProject(id) {
       this.loading = true
       try {
-        const response = await api.get(`/api/projects/${id}`)
+        // const response = await api.get(`/api/projects/${id}`)
+        const response = await api.get(`/projects/${id}`)
         this.project = response.data.data
         return response.data.data
       } catch (error) {
@@ -72,7 +76,8 @@ export const useProjectStore = defineStore('projects', {
     async updateProject(id, data) {
       this.loading = true
       try {
-        const response = await api.put(`/api/projects/${id}`, data)
+        // const response = await api.put(`/api/projects/${id}`, data)
+        const response = await api.put(`/projects/${id}`, data)
         return response.data.data
       } catch (error) {
         console.error('Failed to update project: ', error)
@@ -84,7 +89,8 @@ export const useProjectStore = defineStore('projects', {
     async deleteProject(id) {
       this.loading = true
       try {
-        await api.delete(`/api/projects/${id}`)
+        // await api.delete(`/api/projects/${id}`)
+        await api.delete(`/projects/${id}`)
         this.projects = this.projects.filter((p) => p.id !== id)
       } catch (error) {
         console.error('Failed to delete project: ', error)
@@ -96,18 +102,24 @@ export const useProjectStore = defineStore('projects', {
 
     // * Fetch members of a project
     async fetchMembers(projectId) {
-      const response = await api.get(`/api/projects/${projectId}/members`)
+      // const response = await api.get(`/api/projects/${projectId}/members`)
+      const response = await api.get(`/projects/${projectId}/members`)
       console.log('Raw members response: ', response.data)
       return response.data.data
     },
     // * Fetch available users
     async fetchAvailableUsers(projectId) {
-      const response = await api.get(`/api/projects/${projectId}/members/available`)
+      // const response = await api.get(`/api/projects/${projectId}/members/available`)
+      const response = await api.get(`/projects/${projectId}/members/available`)
       return response.data.data
     },
     // * Add a member
     async addMember(projectId, userId, role) {
-      const response = await api.post(`/api/projects/${projectId}/members`, {
+      // const response = await api.post(`/api/projects/${projectId}/members`, {
+      //   user_id: userId,
+      //   role: role,
+      // })
+      const response = await api.post(`/projects/${projectId}/members`, {
         user_id: userId,
         role: role,
       })
@@ -115,7 +127,8 @@ export const useProjectStore = defineStore('projects', {
     },
     // * Remove a member
     async removeMember(projectId, userId) {
-      const response = await api.delete(`/api/projects/${projectId}/members/${userId}`)
+      // const response = await api.delete(`/api/projects/${projectId}/members/${userId}`)
+      const response = await api.delete(`/projects/${projectId}/members/${userId}`)
       return response.data
     },
   },

@@ -107,6 +107,8 @@ class IssueService
             'estimated_hours' => $data['estimated_hours'] ?? $issue->estimated_hours,
         ]);
 
+        event(new IssueUpdated($issue->fresh()));
+
         $this->activityLogService->logIssueUpdated($issue, auth()->user(), $old, $issue->getAttributes());
 
         return $issue->fresh(['project', 'reporter', 'assignee']);
@@ -145,10 +147,24 @@ class IssueService
 
         $issue->save();
 
-        event(new IssueAssigned($issue));
-        event(new IssueUpdated($issue));
+        $issue->refresh();
+
+        event(new IssueAssigned(
+            $issue->load(['project', 'reporter', 'assignee']),
+            $user->id
+        ));
+
+        event(new IssueUpdated(
+            $issue->load(['project', 'reporter', 'assignee'])
+        ));
 
         $this->activityLogService->logIssueAssigned($issue, auth()->user(), $assignee);
+
+        $this->notificationService->sendIssueAssigned(
+            $issue,
+            $assignee,
+            auth()->user()
+        );
 
         return $issue->fresh(['project', 'reporter', 'assignee']);
 
@@ -210,7 +226,7 @@ class IssueService
         $issue->save();
 
 
-        event(new IssueStatusChanged($issue, $oldStatus, $newStatus));
+        event(new IssueStatusChanged($issue->fresh(), $oldStatus, $newStatus));
 
         $this->notificationService->sendIssueStatusChanged($issue, $current->value, $new->value, auth()->user());
 

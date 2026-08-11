@@ -15,14 +15,14 @@ class CommentCreated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public Comment $comment;
+    // public Comment $comment;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(Comment $comment)
+    public function __construct(public Comment $comment)
     {
-        $this->comment = $comment;
+        $this->comment->load('user');
     }
 
     /**
@@ -30,9 +30,13 @@ class CommentCreated implements ShouldBroadcast
      *
      * @return array<int, Channel>
      */
-    public function broadcastOn(): Channel
+    public function broadcastOn(): array
     {
-        return new Channel('private-issue.' . $this->comment->issue_id);
+        return [
+            new PrivateChannel(
+                'issue.' . $this->comment->issue_id
+            )
+        ];
     }
 
     public function broadcastAs(): string
@@ -42,12 +46,15 @@ class CommentCreated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        // return [
+        //     'id' => $this->comment->id,
+        //     'comment' => $this->comment->comment,
+        //     'user_id' => $this->comment->user_id,
+        //     'user_name' => $this->comment->user->name,
+        //     'created_at' => $this->comment->created_at->toISOString(),
+        // ];
         return [
-            'id' => $this->comment->id,
-            'comment' => $this->comment->comment,
-            'user_id' => $this->comment->user_id,
-            'user_name' => $this->comment->user->name,
-            'created_at' => $this->comment->created_at->toISOString(),
+            'comment' => $this->comment->toArray(),
         ];
     }
 

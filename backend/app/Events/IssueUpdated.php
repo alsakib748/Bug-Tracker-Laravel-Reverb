@@ -15,14 +15,18 @@ class IssueUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public Issue $issue;
+    // public Issue $issue;
 
     /**
      * Create a new event instance.
      */
-    public function __construct(Issue $issue)
+    public function __construct(public Issue $issue)
     {
-        $this->issue = $issue;
+        $this->issue->load([
+            'project',
+            'reporter',
+            'assignee',
+        ]);
     }
 
     /**
@@ -30,9 +34,13 @@ class IssueUpdated implements ShouldBroadcast
      *
      * @return array<int, Channel>
      */
-    public function broadcastOn(): Channel
+    public function broadcastOn(): array
     {
-        return new Channel('private-issue.' . $this->issue->id);
+        return [
+            new PrivateChannel(
+                'issue.' . $this->issue->id
+            )
+        ];
     }
 
     public function broadcastAs(): string
@@ -42,13 +50,18 @@ class IssueUpdated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        // return [
+        //     'id' => $this->issue->id,
+        //     'title' => $this->issue->title,
+        //     'status' => $this->issue->status,
+        //     'priority' => $this->issue->priority,
+        //     'assignee' => $this->issue->assignee?->name,
+        //     'updated_at' => $this->issue->updated_at->toISOString(),
+        // ];
+
         return [
-            'id' => $this->issue->id,
-            'title' => $this->issue->title,
-            'status' => $this->issue->status,
-            'priority' => $this->issue->priority,
-            'assignee' => $this->issue->assignee?->name,
-            'updated_at' => $this->issue->updated_at->toISOString(),
+            'issue' => $this->issue->toArray(),
         ];
+
     }
 }

@@ -13,12 +13,16 @@ return Application::configure(basePath: dirname(__DIR__))
         channels: __DIR__ . '/../routes/channels.php',
         health: '/up',
     )
-    // ->withBroadcasting(
-    //     __DIR__ . '/../routes/channels.php',
-    //     ['prefix' => 'api', 'middleware' => ['api', 'auth:sanctum']],
-    // )
+    ->withBroadcasting(
+        __DIR__ . '/../routes/channels.php',
+        ['prefix' => 'api', 'middleware' => ['api', 'auth:sanctum']],
+    )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
+        // 🔥 Exclude broadcasting auth from CSRF validation
+        $middleware->validateCsrfTokens(except: [
+            'api/broadcasting/auth',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

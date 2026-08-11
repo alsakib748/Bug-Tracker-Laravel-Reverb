@@ -18,7 +18,8 @@ export const useDashboardStore = defineStore('dashboard', {
     async fetchDashboard() {
       this.loading = true
       try {
-        const response = await api.get('/api/dashboard')
+        // const response = await api.get('/api/dashboard')
+        const response = await api.get('/dashboard')
         console.log(response.data)
         this.stats = response.data
       } catch (error) {

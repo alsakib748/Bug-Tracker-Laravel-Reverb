@@ -3,10 +3,6 @@
     <button
       class="relative flex items-center justify-center text-gray-500 transition-colors bg-white border border-gray-200 rounded-full hover:text-dark-900 h-11 w-11 hover:bg-gray-100 hover:text-gray-700 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
       @click="toggleDropdown">
-      <span v-if="unreadCount > 0" class="absolute right-0 top-0.5 z-1 flex h-2 w-2">
-        <span class="absolute inline-flex w-full h-full bg-orange-400 rounded-full opacity-75 -z-1 animate-ping"></span>
-        <span class="relative inline-flex w-2 h-2 bg-orange-500 rounded-full"></span>
-      </span>
       <svg class="fill-current" width="20" height="20" viewBox="0 0 20 20" fill="none"
         xmlns="http://www.w3.org/2000/svg">
         <path fill-rule="evenodd" clip-rule="evenodd"
