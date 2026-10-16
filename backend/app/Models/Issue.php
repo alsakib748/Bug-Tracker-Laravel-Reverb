@@ -82,6 +82,29 @@ class Issue extends Model
             ->orderBy('created_at');
     }
 
+    public function labels()
+    {
+        return $this->belongsToMany(Label::class, 'issue_label', 'issue_id', 'label_id')
+            ->withPivot('created_by', 'created_at')
+            ->orderBy('name');
+    }
+
+    public function watchers()
+    {
+        return $this->belongsToMany(User::class, 'issue_watchers', 'issue_id', 'user_id')
+            ->withPivot('created_at');
+    }
+
+    public function outgoingLinks()
+    {
+        return $this->hasMany(IssueLink::class, 'source_issue_id');
+    }
+
+    public function incomingLinks()
+    {
+        return $this->hasMany(IssueLink::class, 'target_issue_id');
+    }
+
     // ---------- Scopes  ----------
     public function scopeOpen($query)
     {

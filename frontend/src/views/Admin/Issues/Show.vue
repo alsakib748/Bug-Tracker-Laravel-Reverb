@@ -26,7 +26,17 @@ import IssueStatusSelect from '@/components/issues/IssueStatusSelect.vue';
 import TransitionDialog from '@/components/issues/TransitionDialog.vue';
 import IssueStatusTimeline from '@/components/issues/IssueStatusTimeline.vue';
 
+import IssueLabels from '@/components/issues/IssueLabels.vue';
+import LabelPicker from '@/components/issues/LabelPicker.vue';
+import LabelManager from '@/components/issues/LabelManager.vue';
+import WatchIssueButton from '@/components/issues/WatchIssueButton.vue';
+import IssueWatchers from '@/components/issues/IssueWatchers.vue';
+import IssueLinks from '@/components/issues/IssueLinks.vue';
+
 import { useIssueWorkflow } from '@/composables/useIssueWorkflow';
+import { useIssueLabels } from '@/composables/useIssueLabels';
+import { useIssueWatchers } from '@/composables/useIssueWatchers';
+import { useIssueLinks } from '@/composables/useIssueLinks';
 
 import echo from '@/services/echo';
 
@@ -59,6 +69,41 @@ const {
 const showTransitionDialog = ref(false);
 const selectedTransition = ref(null);
 
+// Issue labels
+const {
+  issueLabels,
+  projectLabels,
+  loading: labelsLoading,
+  saving: labelsSaving,
+  loadIssueLabels,
+  loadProjectLabels,
+  updateLabels,
+} = useIssueLabels(route.params.id);
+
+const showLabelPicker = ref(false);
+const showLabelManager = ref(false);
+
+// Issue watchers
+const {
+  watchers,
+  isWatching,
+  loading: watchersLoading,
+  toggling: watchersToggling,
+  load: loadWatchers,
+  toggle: toggleWatch,
+} = useIssueWatchers(route.params.id);
+
+// Issue links
+const {
+  links,
+  loading: linksLoading,
+  creating: linksCreating,
+  error: linksError,
+  load: loadLinks,
+  create: createLink,
+  remove: removeLink,
+} = useIssueLinks(route.params.id);
+
 const comments = ref([]);
 const loadingComments = ref(false);
 const editingComment = ref(null);
@@ -89,6 +134,71 @@ const confirmTransition = async ({ toStatus, reason }) => {
     Swal.fire('Status updated', '', 'success');
   } catch (error) {
     // error message is exposed via workflowError and shown in the dialog
+  }
+};
+
+// ---- Labels ----
+const openLabelPicker = () => {
+  showLabelPicker.value = true;
+};
+
+const openLabelManager = () => {
+  showLabelManager.value = true;
+};
+
+const openLabelManagerFromPicker = () => {
+  showLabelPicker.value = false;
+  showLabelManager.value = true;
+};
+
+const saveLabels = async (labelIds) => {
+  try {
+    await updateLabels(labelIds);
+    showLabelPicker.value = false;
+  } catch (error) {
+    Swal.fire('Error', error.response?.data?.message || 'Failed to update labels.', 'error');
+  }
+};
+
+const removeLabel = async (label) => {
+  try {
+    const remaining = issueLabels.value
+      .filter((item) => item.id !== label.id)
+      .map((item) => item.id);
+    await updateLabels(remaining);
+  } catch (error) {
+    Swal.fire('Error', error.response?.data?.message || 'Failed to remove label.', 'error');
+  }
+};
+
+const onLabelsChanged = async () => {
+  await loadProjectLabels(issue.value?.project?.id);
+  await loadIssueLabels();
+};
+
+// ---- Watchers ----
+const onToggleWatch = async () => {
+  try {
+    await toggleWatch();
+  } catch (error) {
+    Swal.fire('Error', error.response?.data?.message || 'Failed to update watch state.', 'error');
+  }
+};
+
+// ---- Links ----
+const onCreateLink = async (payload) => {
+  try {
+    await createLink(payload);
+  } catch (error) {
+    // error is exposed via linksError and shown in the IssueLinks component
+  }
+};
+
+const onRemoveLink = async (link) => {
+  try {
+    await removeLink(link);
+  } catch (error) {
+    Swal.fire('Error', error.response?.data?.message || 'Failed to remove link.', 'error');
   }
 };
 
@@ -251,6 +361,33 @@ const subscribeToIssueChannel = () => {
       }
     })
 
+    // Issue labels
+    .listen('.issue.labels.updated', (event) => {
+      if (issue.value?.id === event.issue_id) {
+        loadIssueLabels()
+      }
+    })
+
+    // Issue watchers
+    .listen('.issue.watchers.updated', (event) => {
+      if (issue.value?.id === event.issue_id) {
+        loadWatchers()
+      }
+    })
+
+    // Issue links
+    .listen('.issue.link.created', (event) => {
+      if (issue.value?.id === event.source_issue_id || issue.value?.id === event.target_issue_id) {
+        loadLinks()
+      }
+    })
+
+    .listen('.issue.link.deleted', (event) => {
+      if (issue.value?.id === event.source_issue_id || issue.value?.id === event.target_issue_id) {
+        loadLinks()
+      }
+    })
+
     // Comment
     .listen('.comment.created', (event) => {
       const comment = event.comment
@@ -321,6 +458,12 @@ onMounted(async () => {
   await loadHistory()
   await loadAllowedTransitions()
 
+  // 8. Load labels, watchers and links
+  await loadIssueLabels()
+  await loadProjectLabels(issue.value.project?.id)
+  await loadWatchers()
+  await loadLinks()
+
   if (issue.value?.id) {
     echo.leave(`issue.${issue.value.id}`)
   }
@@ -389,6 +532,24 @@ onUnmounted(() => {
         </div>
 
 
+        <!-- Labels -->
+        <div class="mt-4">
+          <div class="flex flex-wrap items-center gap-3 mb-2">
+            <h2 class="text-xl text-gray-700">Labels:</h2>
+            <Button label="Edit" icon="pi pi-tag" class="p-button-text p-button-sm"
+              @click="openLabelPicker" />
+            <Button label="Manage" icon="pi pi-cog" class="p-button-text p-button-sm"
+              @click="openLabelManager" />
+          </div>
+          <IssueLabels :labels="issueLabels" :loading="labelsLoading" removable @remove="removeLabel" />
+        </div>
+
+        <!-- Watchers -->
+        <div class="mt-4 flex flex-wrap items-start justify-between gap-4">
+          <IssueWatchers :watchers="watchers" :loading="watchersLoading" class="flex-1" />
+          <WatchIssueButton :isWatching="isWatching" :toggling="watchersToggling" @toggle="onToggleWatch" />
+        </div>
+
         <h1 class="text-xl text-gray-700">Issue Image/Screenshot:</h1>
         <AttachmentList :attachments="attachments" :loading="attachmentsLoading" @delete="handleDeleteAttachment" />
         <AttachmentUpload @upload="handleUploadAttachment" />
@@ -398,6 +559,12 @@ onUnmounted(() => {
 
         <CommentForm :editing="!!editingComment" :initialContent="editingComment ? editingComment.comment : ''"
           @submit="handleCommentSubmit" @cancelEdit="cancelEdit" />
+
+        <!-- Linked issues -->
+        <div class="mt-6">
+          <IssueLinks :links="links" :loading="linksLoading" :creating="linksCreating" :error="linksError"
+            @create="onCreateLink" @remove="onRemoveLink" />
+        </div>
 
         <!-- Status History -->
         <IssueStatusTimeline :history="statusHistory" :loading="workflowLoading" />
@@ -412,5 +579,11 @@ onUnmounted(() => {
 
     <TransitionDialog v-model="showTransitionDialog" :fromStatus="issue?.status || ''" :toStatus="selectedTransition"
       :submitting="transitioning" :errorMessage="workflowError" @confirm="confirmTransition" />
+
+    <LabelPicker v-model="showLabelPicker" :labels="issueLabels" :options="projectLabels" :loading="labelsLoading"
+      :saving="labelsSaving" @save="saveLabels" @manage="openLabelManagerFromPicker" />
+
+    <LabelManager v-model="showLabelManager" :projectId="issue?.project?.id" :labels="projectLabels"
+      @changed="onLabelsChanged" />
   </AdminLayout>
 </template>

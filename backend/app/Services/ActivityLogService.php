@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ActivityAction;
+use App\Enums\IssueLinkType;
 use App\Events\ActivityLogged;
 use App\Models\ActivityLog;
 use App\Models\Issue;
@@ -234,6 +235,74 @@ class ActivityLogService
             null,
             "{$user->name} deleted a comment on issue #{$issue->id}",
             ['deleted_comment' => $deletedComment]
+        );
+    }
+
+    public function logIssueLabelsChanged(Issue $issue, User $user, array $added, array $removed): void
+    {
+        $this->log(
+            ActivityAction::ISSUE_UPDATED,
+            $user,
+            $issue->project,
+            $issue,
+            Issue::class,
+            $issue->id,
+            "{$user->name} updated labels on issue #{$issue->id}",
+            ['added' => $added, 'removed' => $removed]
+        );
+    }
+
+    public function logIssueWatcherAdded(Issue $issue, User $user): void
+    {
+        $this->log(
+            ActivityAction::ISSUE_UPDATED,
+            $user,
+            $issue->project,
+            $issue,
+            Issue::class,
+            $issue->id,
+            "{$user->name} started watching issue #{$issue->id}",
+        );
+    }
+
+    public function logIssueWatcherRemoved(Issue $issue, User $user): void
+    {
+        $this->log(
+            ActivityAction::ISSUE_UPDATED,
+            $user,
+            $issue->project,
+            $issue,
+            Issue::class,
+            $issue->id,
+            "{$user->name} stopped watching issue #{$issue->id}",
+        );
+    }
+
+    public function logIssueLinked(Issue $issue, User $user, IssueLinkType $type, Issue $target): void
+    {
+        $this->log(
+            ActivityAction::ISSUE_UPDATED,
+            $user,
+            $issue->project,
+            $issue,
+            Issue::class,
+            $issue->id,
+            "{$user->name} linked issue #{$issue->id} as '{$type->label()}' to issue #{$target->id}",
+            ['link_type' => $type->value, 'target_issue_id' => $target->id]
+        );
+    }
+
+    public function logIssueLinkRemoved(Issue $issue, User $user, string $typeLabel, int $targetId): void
+    {
+        $this->log(
+            ActivityAction::ISSUE_UPDATED,
+            $user,
+            $issue->project,
+            $issue,
+            Issue::class,
+            $issue->id,
+            "{$user->name} removed a '{$typeLabel}' link from issue #{$issue->id}",
+            ['target_issue_id' => $targetId]
         );
     }
 }

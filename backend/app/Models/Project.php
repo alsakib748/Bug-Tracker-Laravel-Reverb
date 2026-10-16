@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ProjectStatus;
 use App\Models\ActivityLog;
 use App\Models\Issue;
+use App\Models\Label;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -46,11 +47,19 @@ class Project extends Model
     }
 
     /**
-     * * Issues under this project
+     * * Issues belonging to this project
      */
     public function issues()
     {
         return $this->hasMany(Issue::class);
+    }
+
+    /**
+     * * Labels defined for this project
+     */
+    public function labels()
+    {
+        return $this->hasMany(Label::class);
     }
 
     /**

@@ -92,6 +92,15 @@ class User extends Authenticatable
     }
 
     /**
+     * * Issues this user is watching
+     */
+    public function watchedIssues()
+    {
+        return $this->belongsToMany(Issue::class, 'issue_watchers', 'user_id', 'issue_id')
+            ->withPivot('created_at');
+    }
+
+    /**
      * * Activity logs
      */
     public function activityLogs()

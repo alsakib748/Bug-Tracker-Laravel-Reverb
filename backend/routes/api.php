@@ -6,7 +6,11 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\IssueController;
+use App\Http\Controllers\Api\IssueLabelController;
+use App\Http\Controllers\Api\IssueLinkController;
+use App\Http\Controllers\Api\IssueWatcherController;
 use App\Http\Controllers\Api\IssueWorkflowController;
+use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ProjectController;
@@ -92,6 +96,46 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{comment}', [CommentController::class, 'update']);
         Route::delete('/{comment}', [CommentController::class, 'destroy']);
     });
+
+    Route::prefix('comments')->group(function () {
+        Route::put('/{comment}', [CommentController::class, 'update']);
+        Route::delete('/{comment}', [CommentController::class, 'destroy']);
+    });
+
+    // Labels (project-scoped)
+    Route::prefix('projects/{project}/labels')->group(function () {
+        Route::get('/', [LabelController::class, 'index']);
+        Route::post('/', [LabelController::class, 'store']);
+    });
+
+    Route::prefix('labels')->group(function () {
+        Route::put('/{label}', [LabelController::class, 'update']);
+        Route::delete('/{label}', [LabelController::class, 'destroy']);
+    });
+
+    // Issue labels
+    Route::prefix('issues/{issue}/labels')->group(function () {
+        Route::get('/', [IssueLabelController::class, 'index']);
+        Route::put('/', [IssueLabelController::class, 'sync']);
+        Route::post('/', [IssueLabelController::class, 'attach']);
+        Route::delete('/{label}', [IssueLabelController::class, 'detach']);
+    });
+
+    // Issue watchers
+    Route::prefix('issues/{issue}/watchers')->group(function () {
+        Route::get('/', [IssueWatcherController::class, 'index']);
+        Route::get('/me', [IssueWatcherController::class, 'status']);
+        Route::post('/', [IssueWatcherController::class, 'watch']);
+        Route::delete('/me', [IssueWatcherController::class, 'unwatchMe']);
+    });
+
+    // Issue links
+    Route::prefix('issues/{issue}/links')->group(function () {
+        Route::get('/', [IssueLinkController::class, 'index']);
+        Route::post('/', [IssueLinkController::class, 'store']);
+    });
+
+    Route::delete('/issue-links/{issueLink}', [IssueLinkController::class, 'destroy']);
 
     Route::get('/dashboard', [DashboardController::class, 'index']);
 
