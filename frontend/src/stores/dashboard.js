@@ -20,7 +20,6 @@ export const useDashboardStore = defineStore('dashboard', {
       try {
         // const response = await api.get('/api/dashboard')
         const response = await api.get('/dashboard')
-        console.log(response.data)
         this.stats = response.data
       } catch (error) {
         console.error('Failed to fetch dashboard', error)

@@ -8,7 +8,6 @@ use App\Http\Resources\UserResource;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\ProjectMemberService;
-use Illuminate\Http\Request;
 
 class ProjectMemberController extends Controller
 {
@@ -24,7 +23,7 @@ class ProjectMemberController extends Controller
      */
     public function index(Project $project)
     {
-        // $this->authorize('viewMembers', $project);
+        $this->authorize('view', $project);
 
         $members = $this->memberService->getMembers($project);
 
@@ -37,8 +36,8 @@ class ProjectMemberController extends Controller
      */
     public function store(StoreProjectMemberRequest $request, Project $project)
     {
-        // $this->authorize('manageMembers', $project);
-        // dd($request);
+        $this->authorize('manageMembers', $project);
+
         try {
             $this->memberService->addMember(
                 $project,
@@ -57,7 +56,7 @@ class ProjectMemberController extends Controller
      */
     public function destroy(Project $project, User $user)
     {
-        // $this->authorize('manageMembers', $project);
+        $this->authorize('manageMembers', $project);
 
         try {
             $this->memberService->removeMember($project, (int) $user->id);
@@ -73,7 +72,7 @@ class ProjectMemberController extends Controller
      */
     public function available(Project $project)
     {
-        // $this->authorize('manageMembers', $project);
+        $this->authorize('manageMembers', $project);
 
         $users = $this->memberService->getAvailableUsers($project);
         return UserResource::collection($users);

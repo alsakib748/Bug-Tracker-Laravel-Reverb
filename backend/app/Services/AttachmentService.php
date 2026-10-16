@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ActivityAction;
+use App\Events\AttachmentDeleted;
 use App\Events\AttachmentUploaded;
 use App\Models\Attachment;
 use App\Models\Issue;
@@ -27,10 +28,10 @@ class AttachmentService
     {
         // 1. Generate a unique stored filename
         $storedName = Str::uuid() . '.' . $file->getClientOriginalExtension();
-        $path = "issues/{$issue->id}/" . $storedName;
+        $directory = "issues/{$issue->id}";
 
-        // 2. Store the file
-        Storage::disk('public')->put($path, file_get_contents($file));
+        // 2. Store the file (streamed to disk)
+        $path = $file->storeAs($directory, $storedName, 'public');
 
         // 3. Save metadata using your column names
         $attachment = Attachment::create([
@@ -95,6 +96,8 @@ class AttachmentService
 
         // 2. Delete the record
         $attachment->delete();
+
+        event(new AttachmentDeleted($attachment->id, $attachment->issue_id));
 
         $this->activityLogService->log(
             ActivityAction::ATTACHMENT_DELETED,

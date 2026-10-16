@@ -11,6 +11,7 @@ use App\Models\Attachment;
 use App\Models\Comment;
 use App\Models\Project;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -82,6 +83,26 @@ class Issue extends Model
     public function scopeClosed($query)
     {
         return $query->whereIn('status', ['resolved', 'closed']);
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->whereHas('project.members', function (Builder $memberQuery) use ($user) {
+            $memberQuery->where('users.id', $user->id);
+        });
+    }
+
+    public function isVisibleTo(User $user): bool
+    {
+        if ($user->isAdmin()) {
+            return true;
+        }
+
+        return $this->project && $this->project->members()->where('users.id', $user->id)->exists();
     }
 
 }

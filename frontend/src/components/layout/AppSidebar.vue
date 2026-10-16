@@ -224,11 +224,8 @@ const menuGroups = [
         name: "Settings",
         icon: GridIcon,
         subItems: [
-          { name: "Profile", path: "/blank", pro: false },
+          { name: "Profile", path: "/profile", pro: false },
           { name: "Activity Logs", path: "/activity-logs", pro: false },
-          { name: "System", path: "/blank", pro: false },
-          // { name: "Black Page", path: "/blank", pro: false },
-          // { name: "404 Page", path: "/error-404", pro: false },
         ],
       },
       // {

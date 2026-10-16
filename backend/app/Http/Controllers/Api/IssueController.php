@@ -9,6 +9,7 @@ use App\Http\Requests\StoreIssueRequest;
 use App\Http\Requests\UpdateIssueRequest;
 use App\Http\Resources\IssueResource;
 use App\Models\Issue;
+use App\Models\Project;
 use App\Services\IssueService;
 use Illuminate\Http\Request;
 
@@ -26,7 +27,7 @@ class IssueController extends Controller
      */
     public function index(Request $request)
     {
-        // $this->authorize('viewAny', Issue::class);
+        $this->authorize('viewAny', Issue::class);
 
         $filters = $request->only([
             'project_id',
@@ -42,7 +43,7 @@ class IssueController extends Controller
 
         $perPage = $request->get('per_page', 15);
 
-        $issues = $this->issueService->getAllIssues($filters, $perPage);
+        $issues = $this->issueService->getAllIssues($filters, $perPage, $request->user());
 
         return IssueResource::collection($issues);
 
@@ -53,15 +54,20 @@ class IssueController extends Controller
      */
     public function store(StoreIssueRequest $request)
     {
-        // $this->authorize('viewAny', Issue::class);
+        $project = Project::find($request->project_id);
 
-        $data = $request->validated();
+        $this->authorize('create', [Issue::class, $project]);
 
-        $data['reporter_id'] = $request->user()->id;
+        try {
+            $data = $request->validated();
+            $data['reporter_id'] = $request->user()->id;
 
-        $issue = $this->issueService->createIssue($data);
+            $issue = $this->issueService->createIssue($data);
 
-        return new IssueResource($issue);
+            return new IssueResource($issue);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
 
     }
 
@@ -70,7 +76,7 @@ class IssueController extends Controller
      */
     public function show(Issue $issue)
     {
-        // $this->authorize('view', $issue);
+        $this->authorize('view', $issue);
 
         $issue->load(['project', 'reporter', 'assignee', 'comments.user', 'attachments']);
         return new IssueResource($issue);
@@ -81,11 +87,15 @@ class IssueController extends Controller
      */
     public function update(UpdateIssueRequest $request, Issue $issue)
     {
-        // $this->authorize('update', $issue);
+        $this->authorize('update', $issue);
 
-        $updated = $this->issueService->updateIssue($issue, $request->validated());
+        try {
+            $updated = $this->issueService->updateIssue($issue, $request->validated());
 
-        return new IssueResource($updated);
+            return new IssueResource($updated);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     /**
@@ -93,7 +103,7 @@ class IssueController extends Controller
      */
     public function destroy(Issue $issue)
     {
-        // $this->authorize('delete', $issue);
+        $this->authorize('delete', $issue);
 
         $this->issueService->deleteIssue($issue);
 
@@ -107,11 +117,15 @@ class IssueController extends Controller
      */
     public function assign(AssignIssueRequest $request, Issue $issue)
     {
-        // $this->authorize('assign', $issue);
+        $this->authorize('assign', $issue);
 
-        $issue = $this->issueService->assignIssue($issue, $request->user_id);
+        try {
+            $issue = $this->issueService->assignIssue($issue, $request->user_id);
 
-        return new IssueResource($issue);
+            return new IssueResource($issue);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     /**
@@ -119,11 +133,15 @@ class IssueController extends Controller
      */
     public function changeStatus(ChangeStatusRequest $request, Issue $issue)
     {
-        // $this->authorize('changeStatus', $issue);
+        $this->authorize('changeStatus', $issue);
 
-        $issue = $this->issueService->changeStatus($issue, $request->status);
+        try {
+            $issue = $this->issueService->changeStatus($issue, $request->status);
 
-        return new IssueResource($issue);
+            return new IssueResource($issue);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     /**
@@ -131,11 +149,15 @@ class IssueController extends Controller
      */
     public function reopen(Issue $issue)
     {
-        // $this->authorize('reopen', $issue);
+        $this->authorize('reopen', $issue);
 
-        $issue = $this->issueService->reopenIssue($issue);
+        try {
+            $issue = $this->issueService->reopenIssue($issue);
 
-        return new IssueResource($issue);
+            return new IssueResource($issue);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
     /**
@@ -143,11 +165,15 @@ class IssueController extends Controller
      */
     public function close(Issue $issue)
     {
-        // $this->authorize('close', $issue);
+        $this->authorize('close', $issue);
 
-        $issue = $this->issueService->closeIssue($issue);
+        try {
+            $issue = $this->issueService->closeIssue($issue);
 
-        return new IssueResource($issue);
+            return new IssueResource($issue);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
     }
 
 }

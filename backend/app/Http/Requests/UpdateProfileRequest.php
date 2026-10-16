@@ -28,7 +28,9 @@ class UpdateProfileRequest extends FormRequest
             'name' => 'sometimes|string|max:255',
             'email' => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($userId)],
             'password' => 'nullable|string|min:8|confirmed',
-            'avatar' => 'nullable|image|max:2048', // if you add avatar upload
+            // 'avatar' => 'nullable|image|max:5120', // if you add avatar upload
+            // 'avatar' => 'nullable|mimes:jpg,jpeg,png,webp|max:5120', // if you add avatar upload
+            'avatar' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120', // if you add avatar upload
         ];
     }
 }

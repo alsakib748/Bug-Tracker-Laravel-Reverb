@@ -2,7 +2,7 @@
   <div class="relative" ref="dropdownRef">
     <button class="flex items-center text-gray-700 dark:text-gray-400" @click.prevent="toggleDropdown">
       <span class="mr-3 overflow-hidden rounded-full h-11 w-11">
-        <img :src="currentAvatar" :alt="user?.name || 'User'" class="h-11 w-11 object-cover" />
+        <img :src="currentAvatar" @error="onImgError" :alt="user?.name || 'User'" class="h-11 w-11 object-cover" />
       </span>
 
       <span class="block mr-1 font-medium text-theme-sm">{{ user?.name }} </span>
@@ -53,7 +53,7 @@ const router = useRouter();
 const authStore = useAuthStore();
 
 const user = computed(() => authStore.user);
-const defaultAvatar = computed(() => `https://ui-avatars.com/api/?name=${encodeURIComponent(user.value?.name || 'User')}&background=random&size=128`)
+const defaultAvatar = computed(() => '/images/avatar.jpg')
 const currentAvatar = computed(() => {
   const avatar = user.value?.avatar
 
@@ -74,6 +74,12 @@ const currentAvatar = computed(() => {
 
 const dropdownOpen = ref(false)
 const dropdownRef = ref(null)
+
+const fallbackAvatar = '/images/avatar.jpg';
+const onImgError = (event) => {
+  if (event?.target?.src && event.target.src.includes(fallbackAvatar)) return;
+  if (event?.target) event.target.src = fallbackAvatar;
+};
 
 const menuItems = [
   { href: '/profile', icon: UserCircleIcon, text: 'Edit profile' },
@@ -100,13 +106,10 @@ const signOut = async () => {
       router.push({ name: 'Login' });
     } else {
       toast.error('User Logout Failed');
-      console.log('Logout failed');
     }
   } catch (error) {
     console.error('Logout error : ', error);
   }
-
-  console.log('Signing out...')
 
 }
 

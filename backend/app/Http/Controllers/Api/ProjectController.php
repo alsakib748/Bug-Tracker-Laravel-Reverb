@@ -25,21 +25,15 @@ class ProjectController extends Controller
      */
     public function index(Request $request)
     {
+        $this->authorize('viewAny', Project::class);
 
         try {
-            // $this->authorize('viewAny', Project::class);
-
-            // $filters = $request->only(['search', 'status']);
-            // $perpage = $request->get('per_page', 15);
-
-            // $projects = $this->projectService->getAllProjects($filters, $perPage);
-
-            $projects = $this->projectService->getAllProjects();
+            $projects = $this->projectService->getAllProjects($request->user());
 
             return ProjectResource::collection($projects);
         } catch (\Exception $e) {
             \Log::error('Project index error: ' . $e->getMessage());
-            return resonse()->json(['error' => $e->getMessage()], 500);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
 
     }
@@ -49,7 +43,7 @@ class ProjectController extends Controller
      */
     public function store(StoreProjectRequest $request)
     {
-        // $this->authorize('create', Project::class);
+        $this->authorize('create', Project::class);
 
         $project = $this->projectService->createProject($request->validated());
 
@@ -62,10 +56,8 @@ class ProjectController extends Controller
      */
     public function show(Project $project)
     {
-        // dd($project);
-
-        // $this->authorize('view', $project);
-        $project = $this->projectService->getProject($project);
+        $this->authorize('view', $project);
+        $project = $this->projectService->getProject($project, request()->user());
 
         return new ProjectResource($project);
     }
@@ -75,7 +67,7 @@ class ProjectController extends Controller
      */
     public function update(UpdateProjectRequest $request, Project $project)
     {
-        // $this->authorize('update', $project);
+        $this->authorize('update', $project);
 
         $project = $this->projectService->updateProject($project, $request->validated());
 
@@ -88,7 +80,7 @@ class ProjectController extends Controller
      */
     public function destroy(Project $project)
     {
-        // $this->authorize('delete', $project);
+        $this->authorize('delete', $project);
 
         try {
             $this->projectService->deleteProject($project);

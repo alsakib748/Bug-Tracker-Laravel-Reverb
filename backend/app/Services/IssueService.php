@@ -28,9 +28,12 @@ class IssueService
         $this->activityLogService = $activityLogService;
     }
 
-    public function getAllIssues(array $filters = [], int $perPage = 15): LengthAwarePaginator
+    public function getAllIssues(array $filters = [], int $perPage = 15, ?User $user = null): LengthAwarePaginator
     {
+        $user ??= auth()->user();
+
         $query = Issue::query()
+            ->when($user, fn($q) => $q->visibleTo($user))
             ->with(['project', 'reporter', 'assignee', 'comments', 'attachments'])
             ->when($filters['project_id'] ?? null, fn($q, $v) => $q->where('project_id', $v))
             ->when($filters['status'] ?? null, fn($q, $v) => $q->where('status', $v))
@@ -56,10 +59,18 @@ class IssueService
 
     }
 
-    public function getIssueById(int $id): Issue
+    public function getIssueById(int $id, ?User $user = null): Issue
     {
-        return Issue::with(['project', 'reporter', 'assignee', 'comments.user', 'attachments'])
+        $user ??= auth()->user();
+
+        $issue = Issue::with(['project', 'reporter', 'assignee', 'comments.user', 'attachments'])
             ->findOrFail($id);
+
+        if ($user && !$issue->isVisibleTo($user)) {
+            abort(403, 'You are not allowed to view this issue.');
+        }
+
+        return $issue;
     }
 
     public function createIssue(array $data): Issue
@@ -78,7 +89,7 @@ class IssueService
             'severity' => $data['severity'] ?? Severity::MAJOR->value,
             'status' => IssueStatus::OPEN->value,
             'type' => $data['type'] ?? IssueType::BUG->value,
-            'due_date' => $data['due_data'] ?? null,
+            'due_date' => $data['due_date'] ?? null,
             'estimated_hours' => $data['estimated_hours'] ?? null,
         ]);
 
@@ -135,15 +146,10 @@ class IssueService
 
         $issue->assigned_to = $userId;
 
-        // If status if 'open', change to 'assigned'
-        if ($issue->status === IssueStatus::OPEN->value) {
+        // If status is 'open', change to 'assigned'
+        if ($issue->status === IssueStatus::OPEN) {
             $issue->status = IssueStatus::ASSIGNED;
         }
-
-        // Send notification
-        $assignee = User::find($userId);
-        $notificationService = app(NotificationService::class);
-        $notificationService->sendIssueAssigned($issue, $assignee, auth()->user());
 
         $issue->save();
 
@@ -158,11 +164,11 @@ class IssueService
             $issue->load(['project', 'reporter', 'assignee'])
         ));
 
-        $this->activityLogService->logIssueAssigned($issue, auth()->user(), $assignee);
+        $this->activityLogService->logIssueAssigned($issue, auth()->user(), $user);
 
         $this->notificationService->sendIssueAssigned(
             $issue,
-            $assignee,
+            $user,
             auth()->user()
         );
 
@@ -186,11 +192,11 @@ class IssueService
      */
     public function changeStatus(Issue $issue, string $newStatus): Issue
     {
-        $oldStatus = $issue->status;
-        $current = IssueStatus::tryFrom($issue->status);
+        $current = $issue->status;
+        $oldStatus = $current->value;
         $new = IssueStatus::tryFrom($newStatus);
 
-        if (!$current || !$new) {
+        if (!$new) {
             throw new \Exception('Invalid status value.');
         }
 
@@ -211,26 +217,27 @@ class IssueService
         }
 
         // Additional validation:
-        // - Cannot assign to 'assigned' if no assignee? We'll allow, but assignIssue handles that.
-        if ($newStatus === IssueStatus::ASSIGNED->value && !$issue->assigned_to) {
+        // - Cannot set status to 'assigned' without an assignee.
+        if ($new === IssueStatus::ASSIGNED && !$issue->assigned_to) {
             throw new \Exception('Cannot set status to "Assigned" without an assignee.');
         }
 
         $issue->status = $new;
 
-        // If closing, set completed_at
+        // If closing, set completed_at; if reopening, clear it
         if ($new === IssueStatus::CLOSED) {
             $issue->completed_at = \Illuminate\Support\Carbon::now();
+        } elseif ($new === IssueStatus::REOPENED) {
+            $issue->completed_at = null;
         }
 
         $issue->save();
 
+        event(new IssueStatusChanged($issue->fresh(), $oldStatus, $new->value));
 
-        event(new IssueStatusChanged($issue->fresh(), $oldStatus, $newStatus));
+        $this->notificationService->sendIssueStatusChanged($issue, $oldStatus, $new->value, auth()->user());
 
-        $this->notificationService->sendIssueStatusChanged($issue, $current->value, $new->value, auth()->user());
-
-        $this->activityLogService->logIssueStatusChanged($issue, auth()->user(), $oldStatus, $newStatus);
+        $this->activityLogService->logIssueStatusChanged($issue, auth()->user(), $oldStatus, $new->value);
 
         return $issue->fresh(['project', 'reporter', 'assignee']);
 
@@ -243,18 +250,25 @@ class IssueService
 
     public function reopenIssue(Issue $issue): Issue
     {
-        if ($issue->status !== IssueStatus::RESOLVED->value) {
+        if ($issue->status !== IssueStatus::RESOLVED) {
             throw new \Exception('Only resolved issues can be reopened.');
         }
 
+        $oldStatus = $issue->status->value;
+
         $issue->status = IssueStatus::REOPENED;
+        $issue->completed_at = null;
         $issue->save();
+
+        $issue = $issue->fresh(['project', 'reporter', 'assignee']);
+
+        event(new IssueStatusChanged($issue, $oldStatus, IssueStatus::REOPENED->value));
+
+        $this->notificationService->sendIssueStatusChanged($issue, $oldStatus, IssueStatus::REOPENED->value, auth()->user());
 
         $this->activityLogService->logIssueReopened($issue, auth()->user());
 
-        // TODO: Broadcast event, log activity
-
-        return $issue->fresh(['project', 'reporter', 'assignee']);
+        return $issue;
     }
 
     /**
@@ -262,17 +276,25 @@ class IssueService
      */
     public function closeIssue(Issue $issue): Issue
     {
-        if ($issue->status !== IssueStatus::RESOLVED->value) {
+        if ($issue->status !== IssueStatus::RESOLVED) {
             throw new \Exception('Only resolved issues can be closed.');
         }
+
+        $oldStatus = $issue->status->value;
 
         $issue->status = IssueStatus::CLOSED;
         $issue->completed_at = \Illuminate\Support\Carbon::now();
         $issue->save();
 
-        // TODO: Broadcast event, log activity
+        $issue = $issue->fresh(['project', 'reporter', 'assignee']);
 
-        return $issue->fresh(['project', 'reporter', 'assignee']);
+        event(new IssueStatusChanged($issue, $oldStatus, IssueStatus::CLOSED->value));
+
+        $this->notificationService->sendIssueStatusChanged($issue, $oldStatus, IssueStatus::CLOSED->value, auth()->user());
+
+        $this->activityLogService->logIssueClosed($issue, auth()->user());
+
+        return $issue;
     }
 
 }

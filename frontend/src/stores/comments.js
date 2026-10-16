@@ -70,5 +70,10 @@ export const useCommentStore = defineStore('comments', {
       // subscribeToIssueChannel(). Keeping this hook around so callers
       // that still reference it don't crash, but no listener is added.
     },
+
+    stopListeners(issueId) {
+      if (!issueId) return
+      echo.leave(`issue.${issueId}`)
+    },
   },
 })

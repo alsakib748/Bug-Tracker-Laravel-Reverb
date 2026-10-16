@@ -6,63 +6,93 @@ use App\Models\ActivityLog;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\Project;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 
 class DashboardService
 {
 
-    public function getStats(): array
+    public function getStats(?User $user = null): array
     {
+        $user ??= auth()->user();
+
         return [
-            'total_projects' => $this->getTotalProjects(),
-            'total_issues' => $this->getTotalIssues(),
-            'open_issues' => $this->getOpenIssues(),
-            'in_progress_issues' => $this->getInProgressIssues(),
-            'closed_issues' => $this->getClosedIssues(),
-            'critical_issues' => $this->getCriticalIssues(),
-            'recent_activity' => $this->getRecentActivity(10),
+            'total_projects' => $this->getTotalProjects($user),
+            'total_issues' => $this->getTotalIssues($user),
+            'open_issues' => $this->getOpenIssues($user),
+            'in_progress_issues' => $this->getInProgressIssues($user),
+            'closed_issues' => $this->getClosedIssues($user),
+            'critical_issues' => $this->getCriticalIssues($user),
+            'recent_activity' => $this->getRecentActivity(10, $user),
         ];
     }
 
-    protected function getTotalProjects(): int
+    protected function baseProjectQuery(?User $user = null)
     {
-        return Project::count();
+        $query = Project::query();
+
+        if ($user && !$user->isAdmin()) {
+            $query->visibleTo($user);
+        }
+
+        return $query;
     }
 
-    protected function getTotalIssues(): int
+    protected function baseIssueQuery(?User $user = null)
     {
-        return Issue::count();
+        $query = Issue::query();
+
+        if ($user && !$user->isAdmin()) {
+            $query->visibleTo($user);
+        }
+
+        return $query;
     }
 
-    protected function getOpenIssues(): int
+    protected function getTotalProjects(?User $user = null): int
     {
-        return Issue::whereNotIn('status', ['resolved', 'closed'])->count();
+        return $this->baseProjectQuery($user)->count();
     }
 
-    protected function getInProgressIssues(): int
+    protected function getTotalIssues(?User $user = null): int
     {
-        return Issue::where('status', 'in_progress')->count();
+        return $this->baseIssueQuery($user)->count();
     }
 
-    protected function getClosedIssues(): int
+    protected function getOpenIssues(?User $user = null): int
     {
-        return Issue::where('status', 'closed')->count();
+        return $this->baseIssueQuery($user)->whereNotIn('status', ['resolved', 'closed'])->count();
     }
 
-    protected function getCriticalIssues(): int
+    protected function getInProgressIssues(?User $user = null): int
     {
-        return Issue::where('priority', 'critical')->count();
+        return $this->baseIssueQuery($user)->where('status', 'in_progress')->count();
+    }
+
+    protected function getClosedIssues(?User $user = null): int
+    {
+        return $this->baseIssueQuery($user)->where('status', 'closed')->count();
+    }
+
+    protected function getCriticalIssues(?User $user = null): int
+    {
+        return $this->baseIssueQuery($user)->where('priority', 'critical')->count();
     }
 
     /**
      * Get recent activity from multiple sources (comments, issue updates, ect.)
      */
 
-    protected function getRecentActivity(int $limit = 10): array
+    protected function getRecentActivity(int $limit = 10, ?User $user = null): array
     {
 
         try {
-            $comments = Comment::with(['user', 'issue'])
+            $comments = Comment::with(['user', 'issue.project'])
+                ->when($user && !$user->isAdmin(), function ($query) use ($user) {
+                    $query->whereHas('issue.project', function ($projectQuery) use ($user) {
+                        $projectQuery->visibleTo($user);
+                    });
+                })
                 ->latest()
                 ->limit($limit)
                 ->get()
@@ -77,6 +107,9 @@ class DashboardService
 
             // Recent issue creations
             $issues = Issue::with(['reporter', 'project'])
+                ->when($user && !$user->isAdmin(), function ($query) use ($user) {
+                    $query->visibleTo($user);
+                })
                 ->latest()
                 ->limit($limit)
                 ->get()
@@ -99,6 +132,16 @@ class DashboardService
             // return $activities;
 
             $activities = ActivityLog::with(['user', 'project', 'issue'])
+                ->when($user && !$user->isAdmin(), function ($query) use ($user) {
+                    $query->where(function ($innerQuery) use ($user) {
+                        $innerQuery->whereHas('project', function ($projectQuery) use ($user) {
+                            $projectQuery->visibleTo($user);
+                        })
+                            ->orWhereHas('issue.project', function ($projectQuery) use ($user) {
+                                $projectQuery->visibleTo($user);
+                            });
+                    });
+                })
                 ->latest()
                 ->limit($limit)
                 ->get()

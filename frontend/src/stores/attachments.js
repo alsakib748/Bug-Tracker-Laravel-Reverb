@@ -61,8 +61,6 @@ export const useAttachmentStore = defineStore('attachments', {
         .private(`issue.${issueId}`)
 
         .listen('.attachment.uploaded', (event) => {
-          console.log('Attachment uploaded:', event)
-
           const attachment = event.attachment
 
           if (!attachment) return
@@ -75,8 +73,6 @@ export const useAttachmentStore = defineStore('attachments', {
         })
 
         .listen('.attachment.deleted', (event) => {
-          console.log('Attachment deleted:', event)
-
           this.attachments = this.attachments.filter((item) => item.id !== event.attachment_id)
         })
     },

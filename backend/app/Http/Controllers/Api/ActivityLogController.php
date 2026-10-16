@@ -12,6 +12,16 @@ class ActivityLogController extends Controller
     public function index(Request $request)
     {
         $query = ActivityLog::with(['user', 'project', 'issue'])
+            ->when(!$request->user()->isAdmin(), function ($q) use ($request) {
+                $q->where(function ($innerQuery) use ($request) {
+                    $innerQuery->whereHas('project', function ($projectQuery) use ($request) {
+                        $projectQuery->visibleTo($request->user());
+                    })
+                    ->orWhereHas('issue.project', function ($projectQuery) use ($request) {
+                        $projectQuery->visibleTo($request->user());
+                    });
+                });
+            })
             ->when($request->action, fn($q, $v) => $q->where('action', $v))
             ->when($request->user_id, fn($q, $v) => $q->where('user_id', $v))
             ->when($request->project_id, fn($q, $v) => $q->where('project_id', $v))
@@ -30,6 +40,17 @@ class ActivityLogController extends Controller
 
     public function show(ActivityLog $activityLog)
     {
+        abort_unless(
+            $requestUser = request()->user(),
+            403,
+            'Unauthenticated.'
+        );
+
+        if (!$requestUser->isAdmin()) {
+            $project = $activityLog->project ?? $activityLog->issue?->project;
+            abort_unless($project && $project->isVisibleTo($requestUser), 403, 'You are not allowed to view this activity log.');
+        }
+
         $activityLog->load(['user', 'project', 'issue']);
         return new ActivityLogResource($activityLog);
     }

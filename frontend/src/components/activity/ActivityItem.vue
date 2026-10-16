@@ -1,7 +1,8 @@
 <template>
   <div class="flex items-start space-x-3 py-3 border-b border-gray-100">
     <img
-      :src="log.user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(log.user?.name || 'User')}&background=random&size=32`"
+      :src="log.user?.avatar || '/images/avatar.jpg'"
+      @error="onImgError"
       class="w-8 h-8 rounded-full flex-shrink-0" />
     <div class="flex-1 min-w-0">
       <div class="flex items-center justify-between">
@@ -25,6 +26,12 @@
 const props = defineProps({
   log: { type: Object, required: true },
 });
+
+const fallbackAvatar = '/images/avatar.jpg';
+const onImgError = (event) => {
+  if (event?.target?.src && event.target.src.includes(fallbackAvatar)) return;
+  if (event?.target) event.target.src = fallbackAvatar;
+};
 
 const timeAgo = (dateString) => {
   const now = new Date();

@@ -28,7 +28,8 @@
             <template #body="{ data }">
               <div class="flex items-center gap-2">
                 <img
-                  :src="data.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(data.name)}&background=random&size=32`"
+                  :src="data.avatar || '/images/avatar.jpg'"
+                  @error="onImgError"
                   class="w-8 h-8 rounded-full" />
                 {{ data.name }}
               </div>
@@ -125,6 +126,12 @@ const onPageChange = (event) => {
 const onSort = (event) => {
   const direction = event.sortOrder === 1 ? '' : '-';
   fetchUsers({ sort: direction + event.sortField });
+};
+
+const fallbackAvatar = '/images/avatar.jpg';
+const onImgError = (event) => {
+  if (event?.target?.src && event.target.src.includes(fallbackAvatar)) return;
+  if (event?.target) event.target.src = fallbackAvatar;
 };
 
 const confirmDelete = async (user) => {

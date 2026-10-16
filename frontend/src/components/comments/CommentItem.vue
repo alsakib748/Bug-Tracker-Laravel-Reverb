@@ -3,7 +3,8 @@
     <div class="flex items-start justify-between">
       <div class="flex items-center">
         <img
-          :src="comment.user_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.user_name || 'User')}&background=random&size=32`"
+          :src="comment.user_avatar || '/images/avatar.jpg'"
+          @error="onImgError"
           class="w-8 h-8 rounded-full mr-3" :alt="comment.user_name" />
         <div>
           <span class="font-medium text-gray-800">{{ comment.user_name || 'Unknown User' }}</span>
@@ -50,6 +51,13 @@ const props = defineProps({
 
 
 const emit = defineEmits(['edit', 'delete']);
+
+const fallbackAvatar = '/images/avatar.jpg';
+const onImgError = (event) => {
+  // If the URL is already the local fallback, leave it alone to avoid an infinite loop.
+  if (event?.target?.src && event.target.src.includes(fallbackAvatar)) return;
+  if (event?.target) event.target.src = fallbackAvatar;
+};
 
 const formatDate = (dateString) => {
   const date = new Date(dateString);

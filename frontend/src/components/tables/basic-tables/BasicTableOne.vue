@@ -32,7 +32,7 @@
             <td class="px-5 py-4 sm:px-6">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 overflow-hidden rounded-full">
-                  <img :src="user.avatar" :alt="user.name" />
+                  <img :src="user.avatar" :alt="user.name" @error="onImgError" />
                 </div>
                 <div>
                   <span class="block font-medium text-gray-800 text-theme-sm dark:text-white/90">
@@ -87,6 +87,12 @@
 
 <script setup>
 import { ref } from 'vue'
+
+const fallbackAvatar = '/images/avatar.jpg';
+const onImgError = (event) => {
+  if (event?.target?.src && event.target.src.includes(fallbackAvatar)) return;
+  if (event?.target) event.target.src = fallbackAvatar;
+};
 
 const users = ref([
   {

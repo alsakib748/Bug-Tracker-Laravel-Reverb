@@ -2,11 +2,9 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\IssueStatus;
 use App\Enums\IssueType;
 use App\Enums\Priority;
 use App\Enums\Severity;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,8 +25,16 @@ class UpdateIssueRequest extends FormRequest
      */
     public function rules(): array
     {
+        $user = $this->user();
+        $projectRule = ['sometimes', 'exists:projects,id'];
+
+        if ($user && !$user->isAdmin()) {
+            $projectIds = $user->projects()->pluck('projects.id')->all();
+            $projectRule[] = Rule::in($projectIds);
+        }
+
         return [
-            'project_id' => 'sometimes|exists:projects,id',
+            'project_id' => $projectRule,
             'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'priority' => ['sometimes', Rule::enum(Priority::class)],

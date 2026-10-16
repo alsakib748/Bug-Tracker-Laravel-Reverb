@@ -69,6 +69,10 @@ export const useUserStore = defineStore('users', {
         return response.data.data
       } catch (error) {
         console.error('Failed to update user:', error)
+        // const message = extractErrorMessage(error)
+        // toast.error(message) // single-line message
+        // const message = error.response?.data?.message || 'An error occurred.'
+        // toast.error(message)
         throw error
       } finally {
         this.loading = false

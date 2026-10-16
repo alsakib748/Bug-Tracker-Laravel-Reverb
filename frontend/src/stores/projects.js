@@ -18,26 +18,9 @@ export const useProjectStore = defineStore('projects', {
       this.loading = true
 
       try {
-        // const response = await api.get('/api/projects', { params })
         const response = await api.get('/projects', { params })
-        // console.log('API response: ', response.data)
         this.projects = response.data.data
         this.pagination.total = this.projects.length
-        return response.data
-      } catch (error) {
-        console.error('Failed to fetch projects: ', error)
-        throw error
-      } finally {
-        this.loading = false
-      }
-    },
-    async fetchProjects(params = {}) {
-      this.loading = true
-
-      try {
-        // const response = await api.get('/api/projects', { params })
-        const response = await api.get('/projects', { params })
-        this.projects = response.data.data
         return response.data
       } catch (error) {
         console.error('Failed to fetch projects: ', error)
@@ -102,9 +85,7 @@ export const useProjectStore = defineStore('projects', {
 
     // * Fetch members of a project
     async fetchMembers(projectId) {
-      // const response = await api.get(`/api/projects/${projectId}/members`)
       const response = await api.get(`/projects/${projectId}/members`)
-      console.log('Raw members response: ', response.data)
       return response.data.data
     },
     // * Fetch available users

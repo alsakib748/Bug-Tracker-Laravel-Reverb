@@ -102,17 +102,17 @@ class User extends Authenticatable
     // Helper methods
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === UserRole::ADMIN;
     }
 
-    public function isDeveloper()
+    public function isDeveloper(): bool
     {
-        return $this->role === 'developer';
+        return $this->role === UserRole::DEVELOPER;
     }
 
-    public function isTester()
+    public function isTester(): bool
     {
-        return $this->role === 'tester';
+        return $this->role === UserRole::TESTER;
     }
 
 }

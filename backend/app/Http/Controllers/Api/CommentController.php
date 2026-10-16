@@ -23,7 +23,7 @@ class CommentController extends Controller
 
     public function index(Issue $issue)
     {
-        // $this->authorize('view', $issue);
+        $this->authorize('viewAny', [Comment::class, $issue]);
 
         $comments = $this->commentService->getCommentByIssue($issue);
 
@@ -33,7 +33,7 @@ class CommentController extends Controller
 
     public function store(StoreCommentRequest $request, Issue $issue)
     {
-        // $this->authorize('view', $issue);
+        $this->authorize('create', [Comment::class, $issue]);
 
         try {
             $comment = $this->commentService->createComment(
@@ -50,7 +50,7 @@ class CommentController extends Controller
 
     public function update(UpdateCommentRequest $request, Comment $comment)
     {
-        // $this->authorize('update', $comment);
+        $this->authorize('update', $comment);
 
         $updated = $this->commentService->updateComment($comment, $request->comment);
 
@@ -60,7 +60,8 @@ class CommentController extends Controller
 
     public function destroy(Comment $comment)
     {
-        // $this->authorize('delete', $comment);
+        $this->authorize('delete', $comment);
+
         $this->commentService->deleteComment($comment);
 
         return response()->json(['message' => 'Comment deleted successfully.']);

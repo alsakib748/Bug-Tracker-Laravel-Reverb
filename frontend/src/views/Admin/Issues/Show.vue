@@ -204,10 +204,11 @@ const loadIssue = async () => {
     const data = await issueStore.fetchIssue(route.params.id);
     issue.value = data;
 
-    if (issue.value) {
-      commentStore.initializeListeners(issue.value.id);
-      attachmentStore.initializeListeners(issue.value.id);
-    }
+    // todo: Alternative Way.
+    // if (issue.value) {
+    //   commentStore.initializeListeners(issue.value.id);
+    //   attachmentStore.initializeListeners(issue.value.id);
+    // }
 
     if (data.project) {
       const members = await projectStore.fetchMembers(data.project.id);
@@ -231,15 +232,11 @@ const subscribeToIssueChannel = () => {
 
   const issueId = issue.value.id
 
-  console.log('Subscribing to issue channel:', `issue.${issueId}`)
-
   echo
     .private(`issue.${issueId}`)
 
     // Issue status
     .listen('.issue.status.changed', (event) => {
-      console.log('REALTIME: status changed', event)
-
       if (issue.value?.id === event.issue_id) {
         issue.value.status = event.new_status
       }
@@ -247,8 +244,6 @@ const subscribeToIssueChannel = () => {
 
     // Comment
     .listen('.comment.created', (event) => {
-      console.log('REALTIME: comment created', event)
-
       const comment = event.comment
 
       if (!comment) {
@@ -266,8 +261,6 @@ const subscribeToIssueChannel = () => {
 
     // Attachment uploaded
     .listen('.attachment.uploaded', (event) => {
-      console.log('REALTIME: attachment uploaded', event)
-
       if (event.attachment) {
         attachments.value.unshift(event.attachment)
       }
@@ -275,8 +268,6 @@ const subscribeToIssueChannel = () => {
 
     // Attachment deleted
     .listen('.attachment.deleted', (event) => {
-      console.log('REALTIME: attachment deleted', event)
-
       attachments.value = attachments.value.filter(
         item => item.id !== event.attachment_id
       )
@@ -288,7 +279,6 @@ onMounted(async () => {
   await authStore.checkAuth()
 
   if (!authStore.authenticated) {
-    console.log('User is not authenticated')
     return
   }
 
@@ -324,17 +314,6 @@ onMounted(async () => {
 
   subscribeToIssueChannel()
 
-  // console.log(
-  //   'Starting real-time listeners for:',
-  //   issueId
-  // )
-
-  // issueStore.listenToIssue(issueId)
-
-  // commentStore.initializeListeners(issueId)
-
-  // attachmentStore.initializeListeners(issueId)
-
 });
 
 onUnmounted(() => {
@@ -344,6 +323,8 @@ onUnmounted(() => {
   }
 
   const issueId = issue.value.id
+
+  echo.leave(`issue.${issueId}`)
 
   issueStore.stopListeningToIssue(issueId)
 

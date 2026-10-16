@@ -12,18 +12,18 @@ Broadcast::channel('user.{userId}', function (User $user, string $userId) {
     return (int) $user->id === (int) $userId;
 });
 
-// Private project channel: only project members
+// Private project channel: only users who can view the project (members or
+// admins). Mirrors ProjectPolicy::view.
 Broadcast::channel('project.{projectId}', function (User $user, string $projectId) {
     $project = Project::find((int) $projectId);
-    if (!$project) {
-        return false;
-    }
-    return $project->members()->where('users.id', $user->id)->exists();
+
+    return $project ? $project->isVisibleTo($user) : false;
 });
 
-// Private issue channel: any authenticated user can subscribe (mirrors
-// the controller-level access in IssueController::show, which doesn't
-// restrict by project membership). Tighten this when policies are added.
+// Private issue channel: only users who can view the issue (project members
+// or admins) may subscribe. Mirrors IssuePolicy::view.
 Broadcast::channel('issue.{issueId}', function (User $user, string $issueId) {
-    return Issue::where('id', (int) $issueId)->exists();
+    $issue = Issue::find((int) $issueId);
+
+    return $issue ? $issue->isVisibleTo($user) : false;
 });

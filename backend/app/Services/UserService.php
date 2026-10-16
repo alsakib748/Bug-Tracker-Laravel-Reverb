@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 
 class UserService
@@ -45,7 +44,7 @@ class UserService
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
-            'password' => Hash::make($data['password']),
+            'password' => $data['password'],
             'role' => $data['role'] ?? 'tester',
             'status' => $data['status'] ?? 'active',
             'avatar' => $data['avatar'] ?? null,
@@ -75,7 +74,7 @@ class UserService
         ];
 
         if (!empty($data['password'])) {
-            $updateData['password'] = Hash::make($data['password']);
+            $updateData['password'] = $data['password'];
         }
 
         $user->update($updateData);
@@ -105,7 +104,7 @@ class UserService
         ];
 
         if (!empty($data['password'])) {
-            $updateData['password'] = Hash::make($data['password']);
+            $updateData['password'] = $data['password'];
         }
 
         if (!empty($data['avatar']) && $data['avatar'] instanceof UploadedFile) {

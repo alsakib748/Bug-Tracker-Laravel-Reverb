@@ -313,7 +313,12 @@
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
 import CommonGridShape from '@/components/common/CommonGridShape.vue'
 import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
+import { toast } from 'vue3-toastify'
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 const firstName = ref('')
 const lastName = ref('')
@@ -326,14 +331,25 @@ const togglePasswordVisibility = () => {
   showPassword.value = !showPassword.value
 }
 
-const handleSubmit = () => {
-  // Implement form submission logic here
-  console.log('Form submitted', {
-    firstName: firstName.value,
-    lastName: lastName.value,
+const handleSubmit = async () => {
+  if (!agreeToTerms.value) {
+    toast.error('Please accept the terms and conditions')
+    return
+  }
+
+  const name = `${firstName.value} ${lastName.value}`.trim()
+
+  const success = await authStore.register({
+    name,
     email: email.value,
     password: password.value,
-    agreeToTerms: agreeToTerms.value,
   })
+
+  if (success) {
+    toast.success('Account created successfully')
+    router.push({ name: 'Dashboard' })
+  } else {
+    toast.error('Registration failed. Please check your details.')
+  }
 }
 </script>

@@ -9,7 +9,7 @@
             <label class="block text-sm font-medium text-gray-700">Avatar</label>
             <div class="flex items-center gap-4">
               <img :src="currentAvatar" class="w-16 h-16 rounded-full object-cover" />
-              <input type="file" @change="onFileChange" accept="image/*" class="text-sm" />
+              <input type="file" @change="onFileChange" class="text-sm" />
             </div>
           </div>
 
@@ -55,6 +55,8 @@ import ComponentCard from '@/components/common/ComponentCard.vue';
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
 import Swal from 'sweetalert2';
+import { toast } from 'vue3-toastify'
+
 
 const authStore = useAuthStore();
 const userStore = useUserStore();
@@ -63,7 +65,7 @@ const pageTitle = ref('My Profile');
 
 const user = computed(() => authStore.user);
 const avatarPreview = ref(null);
-const defaultAvatar = computed(() => `https://ui-avatars.com/api/?name=${encodeURIComponent(user.value?.name || 'User')}&background=random&size=64`);
+const defaultAvatar = computed(() => '/images/avatar.jpg');
 const currentAvatar = computed(() => avatarPreview.value || user.value?.avatar || defaultAvatar.value);
 
 const form = reactive({
@@ -112,6 +114,7 @@ const submitForm = async () => {
       data.append('password', form.password);
       data.append('password_confirmation', form.password);
     }
+
     if (avatarFile.value) {
       data.append('avatar', avatarFile.value);
     }
@@ -132,6 +135,7 @@ const submitForm = async () => {
       const backendErrors = error.response.data.errors;
       Object.keys(backendErrors).forEach(field => {
         errors[field] = backendErrors[field][0];
+        toast.error(errors[field]);
       });
     } else {
       Swal.fire('Error', error.response?.data?.message || 'Failed to update profile.', 'error');

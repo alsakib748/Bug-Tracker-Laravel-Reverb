@@ -147,7 +147,7 @@ const fetchIssues = async (params = {}) => {
     issues.value = issueStore.issues;
     pagination.value = issueStore.pagination;
 
-    console.log('Issues from store: ', issues.value);
+    // console.log('Issues from store: ', issues.value);
   } catch (error) {
     console.error('Error fetching issues: ', error);
   } finally {

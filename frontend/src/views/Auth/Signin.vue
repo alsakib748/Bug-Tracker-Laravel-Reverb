@@ -162,8 +162,7 @@ const handleSubmit = async () => {
 
     if (success) {
       toast.success('User Login Successfully');
-      // Login succeeded - router guard will redirect to dashboard
-      router.push({ name: 'Ecommerce' });
+      router.push({ name: 'Dashboard' });
     } else {
       toast.error('User Login Failed!!');
       // Login Failed - store might have thrown or returned false

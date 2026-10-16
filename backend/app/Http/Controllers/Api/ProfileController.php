@@ -31,6 +31,8 @@ class ProfileController extends Controller
      */
     public function update(UpdateProfileRequest $request)
     {
+        // dd($request);
+
         $user = $request->user();
         $updated = $this->userService->updateProfile($user, $request->validated());
 

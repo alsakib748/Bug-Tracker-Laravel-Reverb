@@ -38,6 +38,29 @@ export const useAuthStore = defineStore('auth', {
         this.loading = false
       }
     },
+    async register(payload) {
+      this.loading = true
+
+      try {
+        // 1. Get CSRF cookie (cached after first call)
+        await getCsrfToken()
+
+        // 2. Register
+        await api.post('/register', payload)
+
+        this.authenticated = true
+
+        // 3. Fetch user
+        await this.getUser()
+
+        return true
+      } catch (error) {
+        console.error('Registration failed: ', error)
+        return false
+      } finally {
+        this.loading = false
+      }
+    },
     async getUser() {
       try {
         // const response = await api.get('/api/user')
@@ -86,6 +109,7 @@ export const useAuthStore = defineStore('auth', {
         // Reset notification listeners so the next login can re-register
         try {
           const notificationStore = useNotificationStore()
+          notificationStore.stopListeners()
           notificationStore.listenersInitialized = false
         } catch (_) {}
 
@@ -94,7 +118,7 @@ export const useAuthStore = defineStore('auth', {
         this.authenticated = false
 
         // Reset CSRF token so next login gets fresh token
-        // resetCsrfToken()
+        resetCsrfToken()
 
         return true
       } catch (error) {

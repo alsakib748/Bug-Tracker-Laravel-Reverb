@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ActivityAction;
+use App\Events\ActivityLogged;
 use App\Models\ActivityLog;
 use App\Models\Issue;
 use App\Models\Project;
@@ -31,7 +32,7 @@ class ActivityLogService
         $ip = $ip ?? request()->ip();
         $userAgent = $userAgent ?? request()->userAgent();
 
-        return ActivityLog::create([
+        $log = ActivityLog::create([
             'user_id' => $user?->id,
             'project_id' => $project?->id,
             'issue_id' => $issue?->id,
@@ -43,6 +44,14 @@ class ActivityLogService
             'ip' => $ip,
             'user_agent' => $userAgent,
         ]);
+
+        // Broadcast real-time update only when the log is tied to a project
+        // (the event's channel is project-scoped).
+        if ($log->project_id !== null) {
+            event(new ActivityLogged($log));
+        }
+
+        return $log;
 
     }
 

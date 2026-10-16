@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '@/services/api'
 import echo from '@/services/echo'
-import { useAuthStore } from './auth'
 
 export const useIssueStore = defineStore('issues', {
   state: () => ({
@@ -21,7 +20,7 @@ export const useIssueStore = defineStore('issues', {
       try {
         // const response = await api.get('/api/issues', { params })
         const response = await api.get('/issues', { params })
-        console.log('API response:', response.data)
+        // console.log('API response:', response.data)
         this.issues = response.data.data || []
         this.pagination = {
           current_page: response.data.current_page || 1,
@@ -29,7 +28,7 @@ export const useIssueStore = defineStore('issues', {
           per_page: response.data.per_page || 10,
           total: response.data.total || 0,
         }
-        console.log('Store issues after assignment: ', this.issues)
+        // console.log('Store issues after assignment: ', this.issues)
         return response.data
       } catch (error) {
         console.error('Failed to fetch issues: ', error)
@@ -111,55 +110,53 @@ export const useIssueStore = defineStore('issues', {
       const response = await api.patch(`/issues/${id}/close`)
       return response.data.data
     },
-    listenToIssue(issueId) {
-      if (!issueId) return
+    // listenToIssue(issueId) {
+    //   if (!issueId) return
 
-      console.log(`Listening to issue.${issueId}`)
+    //   console.log(`Listening to issue.${issueId}`)
 
-      echo
-        .private(`issue.${issueId}`)
+    //   echo
+    //     .private(`issue.${issueId}`)
 
-        .listen('.issue.status.changed', (event) => {
-          console.log('REAL-TIME ISSUE STATUS:', event)
+    //     .listen('.issue.status.changed', (event) => {
+    //       console.log('REAL-TIME ISSUE STATUS:', event)
 
-          if (this.issue && this.issue.id === event.issue_id) {
-            this.issue = {
-              ...this.issue,
+    //       if (this.issue && this.issue.id === event.issue_id) {
+    //         this.issue = {
+    //           ...this.issue,
 
-              status: event.new_status,
+    //           status: event.new_status,
 
-              status_label: event.status_label ?? this.issue.status_label,
-            }
-          }
-        })
+    //           status_label: event.status_label ?? this.issue.status_label,
+    //         }
+    //       }
+    //     })
 
-        .listen('.issue.assigned', (event) => {
-          console.log('REAL-TIME ISSUE ASSIGNED:', event)
+    //     .listen('.issue.assigned', (event) => {
+    //       console.log('REAL-TIME ISSUE ASSIGNED:', event)
 
-          if (this.issue && this.issue.id === event.issue_id) {
-            this.issue = {
-              ...this.issue,
+    //       if (this.issue && this.issue.id === event.issue_id) {
+    //         this.issue = {
+    //           ...this.issue,
 
-              assigned_to: event.assigned_to,
+    //           assigned_to: event.assigned_to,
 
-              assignee: event.assignee,
-            }
-          }
-        })
+    //           assignee: event.assignee,
+    //         }
+    //       }
+    //     })
 
-        .listen('.issue.updated', (event) => {
-          console.log('REAL-TIME ISSUE UPDATED:', event)
+    //     .listen('.issue.updated', (event) => {
+    //       console.log('REAL-TIME ISSUE UPDATED:', event)
 
-          if (this.issue && this.issue.id === event.issue.id) {
-            this.issue = event.issue
-          }
-        })
-    },
+    //       if (this.issue && this.issue.id === event.issue.id) {
+    //         this.issue = event.issue
+    //       }
+    //     })
+    // },
 
     stopListeningToIssue(issueId) {
       if (!issueId) return
-
-      console.log(`Leaving issue.${issueId}`)
 
       echo.leave(`issue.${issueId}`)
     },
@@ -181,25 +178,25 @@ export const useIssueStore = defineStore('issues', {
     //   echo.leave(`project.${projectId}`)
     // },
 
-    initializeListeners(issueId) {
-      if (!issueId) return
+    // initializeListeners(issueId) {
+    //   if (!issueId) return
 
-      console.log(`Subscribing to issue.${issueId} for comments`)
+    //   console.log(`Subscribing to issue.${issueId} for comments`)
 
-      echo.private(`issue.${issueId}`).listen('.comment.created', (event) => {
-        console.log('Comment created:', event)
+    //   echo.private(`issue.${issueId}`).listen('.comment.created', (event) => {
+    //     console.log('Comment created:', event)
 
-        const comment = event.comment
+    //     const comment = event.comment
 
-        if (!comment) return
+    //     if (!comment) return
 
-        const exists = this.comments.some((item) => item.id === comment.id)
+    //     const exists = this.comments.some((item) => item.id === comment.id)
 
-        if (!exists) {
-          this.comments.push(comment)
-        }
-      })
-    },
+    //     if (!exists) {
+    //       this.comments.push(comment)
+    //     }
+    //   })
+    // },
     stopListeners(issueId) {
       if (!issueId) return
 

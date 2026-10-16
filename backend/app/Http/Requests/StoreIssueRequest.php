@@ -6,7 +6,6 @@ use App\Enums\IssueStatus;
 use App\Enums\IssueType;
 use App\Enums\Priority;
 use App\Enums\Severity;
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -27,8 +26,16 @@ class StoreIssueRequest extends FormRequest
      */
     public function rules(): array
     {
+        $user = $this->user();
+        $projectRule = ['required', 'exists:projects,id'];
+
+        if ($user && !$user->isAdmin()) {
+            $projectIds = $user->projects()->pluck('projects.id')->all();
+            $projectRule[] = Rule::in($projectIds);
+        }
+
         return [
-            'project_id' => 'required|exists:projects,id',
+            'project_id' => $projectRule,
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'priority' => ['required', Rule::enum(Priority::class)],

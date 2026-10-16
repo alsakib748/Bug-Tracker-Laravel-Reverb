@@ -68,15 +68,6 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 
-// import DefaultInputs from '@/components/forms/FormElements/DefaultInputs.vue'
-// import SelectInput from '@/components/forms/FormElements/SelectInput.vue'
-// import InputState from '@/components/forms/FormElements/InputState.vue'
-// import TextArea from '@/components/forms/FormElements/TextArea.vue'
-// import InputGroup from '@/components/forms/FormElements/InputGroup.vue'
-// import Dropzone from '@/components/forms/FormElements/Dropzone.vue'
-// import FileInput from '@/components/forms/FormElements/FileInput.vue'
-// import CheckboxInput from '@/components/forms/FormElements/CheckboxInput.vue'
-
 // PrimeVue Components
 
 import InputText from 'primevue/inputtext';
@@ -132,9 +123,10 @@ const submitForm = async () => {
       const backendErrors = error.response.data.errors;
       Object.keys(backendErrors).forEach(field => {
         errors[field] = backendErrors[field][0];
+        toast.error(errors[field]);
       });
     } else {
-      toast.success('Failed to create project: ' + (error.response?.data?.message) || 'Unknown error');
+      toast.error('Failed to create project: ' + (error.response?.data?.message) || 'Unknown error');
     }
   } finally {
     loading.value = false;

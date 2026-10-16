@@ -26,10 +26,9 @@ class AttachmentController extends Controller
      */
     public function index(Issue $issue)
     {
-        // $this->authorize('view', $issue);
+        $this->authorize('viewAny', [Attachment::class, $issue]);
 
         try {
-            // $this->authorize('view', $issue);
             $attachments = $this->attachmentService->getIssueAttachments($issue);
             return AttachmentResource::collection($attachments);
         } catch (\Exception $e) {
@@ -43,16 +42,9 @@ class AttachmentController extends Controller
      */
     public function store(UploadAttachmentRequest $request, Issue $issue)
     {
-        // $this->authorize('view', $issue);
+        $this->authorize('create', [Attachment::class, $issue]);
 
         try {
-            // $this->authorize('view', $issue);
-
-            // Check project membership
-            if (!$issue->project->members()->where('user_id', $request->user()->id)->exists()) {
-                return response()->json(['message' => 'You are not a member of this project.'], 403);
-            }
-
             $attachment = $this->attachmentService->uploadAttachment(
                 $issue,
                 $request->user(),
@@ -71,9 +63,9 @@ class AttachmentController extends Controller
      */
     public function download(Attachment $attachment)
     {
+        $this->authorize('view', $attachment);
+
         try {
-            $issue = $attachment->issue;
-            // $this->authorize('view', $issue);
             return $this->attachmentService->downloadAttachment($attachment);
         } catch (\Exception $e) {
             Log::error('Attachment download error: ' . $e->getMessage());
@@ -86,13 +78,10 @@ class AttachmentController extends Controller
      */
     public function destroy(Attachment $attachment)
     {
+        $this->authorize('delete', $attachment);
+
         try {
             $user = request()->user();
-
-            // Permissions: uploader or admin
-            if (!$user->isAdmin() && $user->id !== $attachment->user_id) {
-                return response()->json(['message' => 'You are not allowed to delete this attachment.'], 403);
-            }
 
             $this->attachmentService->deleteAttachment($attachment, $user);
 

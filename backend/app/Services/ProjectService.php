@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Enums\ActivityAction;
 use App\Models\Project;
-use Illuminate\Pagination\LengthAwarePaginator;
+use App\Models\User;
 
 class ProjectService
 {
@@ -31,9 +31,13 @@ class ProjectService
         $this->activityLogService = $activityLogService;
     }
 
-    public function getAllProjects()
+    public function getAllProjects(User $user)
     {
-        $projects = Project::with(['creator', 'members'])->orderBy('id', 'desc')->get();
+        $projects = Project::query()
+            ->visibleTo($user)
+            ->with(['creator', 'members'])
+            ->orderBy('id', 'desc')
+            ->get();
 
         return $projects;
     }
@@ -60,8 +64,12 @@ class ProjectService
 
     }
 
-    public function getProject(Project $project): Project
+    public function getProject(Project $project, User $user): Project
     {
+        if (!$project->isVisibleTo($user)) {
+            abort(403, 'You are not allowed to view this project.');
+        }
+
         return $project->load(['creator', 'members', 'issues']);
     }
 

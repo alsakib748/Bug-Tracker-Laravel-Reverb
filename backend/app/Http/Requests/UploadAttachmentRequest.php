@@ -23,7 +23,7 @@ class UploadAttachmentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'file' => 'required|file|max:20480', // 20 MB max
+            'file' => 'required|file|max:20480|mimes:jpg,jpeg,png,gif,webp,pdf,txt,log,csv,zip', // 20 MB max
         ];
     }
 
@@ -33,6 +33,7 @@ class UploadAttachmentRequest extends FormRequest
             'file.required' => 'Please select a file to upload.',
             'file.file' => 'The uploaded file is not valid.',
             'file.max' => 'The file size must not exceed 20 MB.',
+            'file.mimes' => 'The file type is not allowed. Allowed types: jpg, jpeg, png, gif, webp, pdf, txt, log, csv, zip.',
         ];
     }
 

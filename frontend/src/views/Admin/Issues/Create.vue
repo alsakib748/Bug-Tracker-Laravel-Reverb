@@ -161,17 +161,17 @@ const loadProjects = async () => {
 }
 
 const loadProjectMembers = async (projectId) => {
-  console.log('Loading members for project ID:', projectId);
+  // console.log('Loading members for project ID:', projectId);
   if (!projectId) {
     projectMembers.value = [];
     return;
   }
   try {
     const members = await projectStore.fetchMembers(projectId);
-    console.log('All members:', members);
+    // console.log('All members:', members);
 
     const developers = members.filter(m => m.role === 'developer');
-    console.log('Developers:', developers);
+    // console.log('Developers:', developers);
 
     projectMembers.value = members;
   } catch (error) {

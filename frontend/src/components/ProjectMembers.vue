@@ -41,7 +41,7 @@
               <label class="block text-sm font-medium text-gray-700">User</label>
               <Select v-model="newMember.userId" :options="availableUsers" optionLabel="name" optionValue="id"
                 placeholder="Search for a user..." filter :filterFields="['name', 'email']" class="w-full mt-1"
-                :class="{ 'p-invalid': errors.user }" @change="(val) => console.log('Selected userId:', val)" />
+                :class="{ 'p-invalid': errors.user }" @change="clearError('user')" />
               <small v-if="errors.user" class="text-red-500">{{ errors.user }}</small>
             </div>
 
@@ -217,9 +217,7 @@ const openModal = () => {
   newMember.role = 'developer';
   errors.user = null;
   errors.role = null;
-  loadAvailableUsers().then(() => {
-    console.log('Available users:', availableUsers.value);
-  });
+  loadAvailableUsers();
 }
 
 const closeModal = () => {

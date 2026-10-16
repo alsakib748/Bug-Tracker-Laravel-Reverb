@@ -58,7 +58,7 @@
             }">
             <!-- Avatar -->
             <span class="relative block w-10 h-10 rounded-full overflow-hidden flex-shrink-0">
-              <img :src="getUserAvatar(notification)" alt="User" class="w-full h-full object-cover" />
+              <img :src="getUserAvatar(notification)" @error="onImgError" alt="User" class="w-full h-full object-cover" />
             </span>
 
             <span class="block flex-1 min-w-0">
@@ -151,8 +151,15 @@ const handleClickOutside = (event) => {
 }
 
 // Helper functions for display
+const fallbackAvatar = '/images/avatar.jpg';
+
 const getUserAvatar = (notification) => {
-  return notification.data?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(notification.data?.user_name || 'User')}&background=random&size=40`
+  return notification.data?.avatar || fallbackAvatar;
+}
+
+const onImgError = (event) => {
+  if (event?.target?.src && event.target.src.includes(fallbackAvatar)) return;
+  if (event?.target) event.target.src = fallbackAvatar;
 }
 
 const getNotificationUser = (notification) => {

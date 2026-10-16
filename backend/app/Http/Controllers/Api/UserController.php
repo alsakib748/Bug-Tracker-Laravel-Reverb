@@ -24,7 +24,7 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        // $this->authorize('viewAny', User::class);
+        $this->authorize('viewAny', User::class);
 
         $filters = $request->only(['search', 'role', 'status', 'sort']);
         $perPage = $request->get('per_page', 15);
@@ -36,7 +36,7 @@ class UserController extends Controller
 
     public function store(StoreUserRequest $request)
     {
-        // $this->authorize('create', User::class);
+        $this->authorize('create', User::class);
 
         $user = $this->userService->createUser($request->validated());
 
@@ -48,7 +48,7 @@ class UserController extends Controller
      */
     public function show(User $user)
     {
-        // $this->authorize('view', $user);
+        $this->authorize('view', $user);
 
         return new UserResource($user);
     }
@@ -58,7 +58,7 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user)
     {
-        // $this->authorize('update', $user);
+        $this->authorize('update', $user);
 
         $updated = $this->userService->updateUser($user, $request->validated());
 
@@ -70,7 +70,7 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-        // $this->authorize('delete', $user);
+        $this->authorize('delete', $user);
 
         try {
             $this->userService->deleteUser($user);

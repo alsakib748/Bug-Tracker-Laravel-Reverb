@@ -6,7 +6,6 @@ const api = axios.create({
   withXSRFToken: true,
   headers: {
     Accept: 'application/json',
-    'Content-Type': 'application/json',
   },
 })
 
@@ -15,16 +14,6 @@ let csrfTokenPromise = null
 
 export const getCsrfToken = async () => {
   if (csrfTokenPromise) return csrfTokenPromise
-
-  // csrfTokenPromise = api
-  //   .get('/sanctum/csrf-cookie')
-  //   .then(() => {
-  //     return true
-  //   })
-  //   .catch((error) => {
-  //     csrfTokenPromise = null // Reset on failure
-  //     throw error
-  //   })
 
   csrfTokenPromise = axios
     .get(`${import.meta.env.VITE_BACKEND_URL}/sanctum/csrf-cookie`, {
@@ -47,5 +36,17 @@ export const getCsrfToken = async () => {
 export const resetCsrfToken = () => {
   csrfTokenPromise = null
 }
+
+// If the session/CSRF expires (419), drop the cached token promise so the
+// next request fetches a fresh csrf-cookie.
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 419) {
+      csrfTokenPromise = null
+    }
+    return Promise.reject(error)
+  }
+)
 
 export default api

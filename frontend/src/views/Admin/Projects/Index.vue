@@ -100,7 +100,7 @@ const fetchAll = async () => {
     await projectStore.fetchAllProjects();
     projects.value = projectStore.projects;
   } catch (error) {
-    console.log('Project List Error', error);
+    console.error('Project List Error', error);
   } finally {
     loading.value = false;
   }

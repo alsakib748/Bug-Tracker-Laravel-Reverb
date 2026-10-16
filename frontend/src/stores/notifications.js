@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import api from '@/services/api'
+import api, { getCsrfToken } from '@/services/api'
 import echo from '@/services/echo'
 import { useAuthStore } from './auth'
 
@@ -94,41 +94,36 @@ export const useNotificationStore = defineStore('notifications', {
 
       // Ensure CSRF cookie is fresh before /api/broadcasting/auth
       try {
-        const { getCsrfToken } = await import('@/services/api')
         await getCsrfToken()
       } catch (_) {}
 
       try {
-        console.log('Subscribing to private channel for user:', auth.user.id)
-        console.log(
-          'Current XSRF token:',
-          (function () {
-            const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/)
-            return m ? decodeURIComponent(m[1]) : null
-          })(),
-        )
-
         echo
           .private(`user.${auth.user.id}`)
-          .listen('notification.created', (data) => {
-            console.log('Real-time notification received:', data)
-            // Add notification to the list
-            this.notifications.unshift(data)
-            // If you have a toast notification system, you can show it here
-            // this.showToast(data)
-          })
-          .listen('notification.read', (data) => {
-            console.log('Notification read event:', data)
-            const notify = this.notifications.find((n) => n.id === data.id)
-            if (notify) {
-              notify.read_at = new Date().toISOString()
-            }
+          .listen('.notification.created', (data) => {
+            // Backend broadcastsAs('notification.created') and wraps payload
+            // in { notification: {...} }
+            const notification = data?.notification ?? data
+            this.notifications.unshift(notification)
           })
 
         this.listenersInitialized = true
-        console.log('Notification listeners initialized for user:', auth.user.id)
       } catch (error) {
         console.error('Failed to initialize notification listeners:', error)
+      }
+    },
+
+    stopListeners() {
+      if (!this.listenersInitialized) return
+      try {
+        const auth = useAuthStore()
+        if (auth.user?.id) {
+          echo.leave(`user.${auth.user.id}`)
+        }
+      } catch (error) {
+        console.error('Failed to stop notification listeners:', error)
+      } finally {
+        this.listenersInitialized = false
       }
     },
   },

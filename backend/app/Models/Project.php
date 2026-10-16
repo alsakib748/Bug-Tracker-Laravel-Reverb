@@ -6,6 +6,7 @@ use App\Enums\ProjectStatus;
 use App\Models\ActivityLog;
 use App\Models\Issue;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -39,10 +40,9 @@ class Project extends Model
      */
     public function members()
     {
-        // return $this->belongsToMany(User::class, 'project_members')
-        //     ->withPivot('role', 'joined_at')
-        //     ->withTimestamps();
-        return $this->belongsToMany(User::class, 'project_members');
+        return $this->belongsToMany(User::class, 'project_members')
+            ->withPivot('role', 'joined_at')
+            ->withTimestamps();
     }
 
     /**
@@ -59,6 +59,37 @@ class Project extends Model
     public function activityLogs()
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->whereHas('members', function (Builder $memberQuery) use ($user) {
+            $memberQuery->where('users.id', $user->id);
+        });
+    }
+
+    public function isVisibleTo(User $user): bool
+    {
+        return $user->isAdmin() || $this->members()->where('users.id', $user->id)->exists();
+    }
+
+    /**
+     * Whether the user manages this project (creator, manager member, or admin).
+     */
+    public function isManagedBy(User $user): bool
+    {
+        if ($user->isAdmin() || $this->created_by === $user->id) {
+            return true;
+        }
+
+        return $this->members()
+            ->where('users.id', $user->id)
+            ->wherePivot('role', 'manager')
+            ->exists();
     }
 
 }

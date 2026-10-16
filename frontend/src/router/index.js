@@ -1,6 +1,11 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
+import Login from '@/views/Auth/Signin.vue'
+import Signup from '@/views/Auth/Signup.vue'
+import Dashboard from '@/views/Ecommerce.vue'
+import NotFound from '@/views/Errors/FourZeroFour.vue'
+
 // Import Users Pages
 import UsersIndex from '@/views/Admin/Users/Index.vue'
 import UsersCreate from '@/views/Admin/Users/Create.vue'
@@ -26,20 +31,24 @@ import NotificationsShow from '@/views/Admin/Notifications/Show.vue'
 // Import Activity Logs Pages
 import ActivityLogsIndex from '@/views/Admin/ActivityLogs/Index.vue'
 
-// Import Project Members Page
-// import ProjectMembers from '@/views/Admin/ProjectMembers/ProjectMembers.vue'
-
 const routes = [
   {
     path: '/',
     name: 'Login',
-    component: () => import('../views/Auth/Signin.vue'),
+    alias: '/signin',
+    component: Login,
+    meta: { guest: true },
+  },
+  {
+    path: '/signup',
+    name: 'Signup',
+    component: Signup,
     meta: { guest: true },
   },
   {
     path: '/dashboard',
-    name: 'Ecommerce',
-    component: () => import('../views/Ecommerce.vue'),
+    name: 'Dashboard',
+    component: Dashboard,
     meta: { requiresAuth: true },
   },
   {
@@ -133,130 +142,9 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
-    path: '/calendar',
-    name: 'Calendar',
-    component: () => import('../views/Others/Calendar.vue'),
-    meta: {
-      title: 'Calendar',
-    },
-  },
-  // {
-  //   path: '/profile',
-  //   name: 'Profile',
-  //   component: () => import('../views/Others/UserProfile.vue'),
-  //   meta: {
-  //     title: 'Profile',
-  //   },
-  // },
-  {
-    path: '/form-elements',
-    name: 'Form Elements',
-    component: () => import('../views/Forms/FormElements.vue'),
-    meta: {
-      title: 'Form Elements',
-    },
-  },
-  {
-    path: '/basic-tables',
-    name: 'Basic Tables',
-    component: () => import('../views/Tables/BasicTables.vue'),
-    meta: {
-      title: 'Basic Tables',
-    },
-  },
-  {
-    path: '/line-chart',
-    name: 'Line Chart',
-    component: () => import('../views/Chart/LineChart/LineChart.vue'),
-  },
-  {
-    path: '/bar-chart',
-    name: 'Bar Chart',
-    component: () => import('../views/Chart/BarChart/BarChart.vue'),
-  },
-  {
-    path: '/alerts',
-    name: 'Alerts',
-    component: () => import('../views/UiElements/Alerts.vue'),
-    meta: {
-      title: 'Alerts',
-    },
-  },
-  {
-    path: '/avatars',
-    name: 'Avatars',
-    component: () => import('../views/UiElements/Avatars.vue'),
-    meta: {
-      title: 'Avatars',
-    },
-  },
-  {
-    path: '/badge',
-    name: 'Badge',
-    component: () => import('../views/UiElements/Badges.vue'),
-    meta: {
-      title: 'Badge',
-    },
-  },
-
-  {
-    path: '/buttons',
-    name: 'Buttons',
-    component: () => import('../views/UiElements/Buttons.vue'),
-    meta: {
-      title: 'Buttons',
-    },
-  },
-
-  {
-    path: '/images',
-    name: 'Images',
-    component: () => import('../views/UiElements/Images.vue'),
-    meta: {
-      title: 'Images',
-    },
-  },
-  {
-    path: '/videos',
-    name: 'Videos',
-    component: () => import('../views/UiElements/Videos.vue'),
-    meta: {
-      title: 'Videos',
-    },
-  },
-  {
-    path: '/blank',
-    name: 'Blank',
-    component: () => import('../views/Pages/BlankPage.vue'),
-    meta: {
-      title: 'Blank',
-    },
-  },
-
-  {
-    path: '/error-404',
-    name: '404 Error',
-    component: () => import('../views/Errors/FourZeroFour.vue'),
-    meta: {
-      title: '404 Error',
-    },
-  },
-
-  {
-    path: '/signin',
-    name: 'Signin',
-    component: () => import('../views/Auth/Signin.vue'),
-    meta: {
-      title: 'Signin',
-    },
-  },
-  {
-    path: '/signup',
-    name: 'Signup',
-    component: () => import('../views/Auth/Signup.vue'),
-    meta: {
-      title: 'Signup',
-    },
+    path: '/:pathMatch(.*)*',
+    name: 'NotFound',
+    component: NotFound,
   },
 ]
 
@@ -265,21 +153,33 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach(async (to, form, next) => {
+// Track the in-flight auth check so concurrent navigations share a single request
+let authCheckPromise = null
+
+const ensureAuthChecked = async (auth) => {
+  if (auth.authenticated || auth.user !== null) return
+  if (!authCheckPromise) {
+    authCheckPromise = auth.checkAuth().finally(() => {
+      authCheckPromise = null
+    })
+  }
+  await authCheckPromise
+}
+
+router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore()
 
-  // If we haven't checked auth yet, do it
-  if (auth.user === null && !auth.authenticated) {
-    await auth.checkAuth()
-  }
+  await ensureAuthChecked(auth)
 
   if (to.meta.requiresAuth && !auth.authenticated) {
-    next({ name: 'Login' })
-  } else if (to.meta.guest && auth.authenticated) {
-    next({ name: 'Ecommerce' })
-  } else {
-    next()
+    return next({ name: 'Login' })
   }
+
+  if (to.meta.guest && auth.authenticated) {
+    return next({ name: 'Dashboard' })
+  }
+
+  next()
 })
 
 export default router
