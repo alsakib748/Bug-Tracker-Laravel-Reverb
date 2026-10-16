@@ -22,11 +22,13 @@ class IssueStatusChanged implements ShouldBroadcast
     /**
      * Create a new event instance.
      */
-    public function __construct(public Issue $issue, public string $oldStatus, public string $newStatus)
-    {
-        // $this->issue = $issue;
-        // $this->oldStatus = $oldStatus;
-        // $this->newStatus = $newStatus;
+    public function __construct(
+        public Issue $issue,
+        public string $oldStatus,
+        public string $newStatus,
+        public ?int $historyId = null,
+        public ?string $actorName = null,
+    ) {
     }
 
     /**
@@ -57,9 +59,13 @@ class IssueStatusChanged implements ShouldBroadcast
     {
         return [
             'issue_id' => $this->issue->id,
+            'history_id' => $this->historyId,
             'old_status' => $this->oldStatus,
             'new_status' => $this->newStatus,
+            'status_label' => $this->issue->status?->label(),
+            'actor_name' => $this->actorName,
             'assignee' => $this->issue->assignee?->name,
+            'changed_at' => now()->toISOString(),
         ];
     }
 

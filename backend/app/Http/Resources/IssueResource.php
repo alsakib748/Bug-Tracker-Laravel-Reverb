@@ -34,6 +34,8 @@ class IssueResource extends JsonResource
             'due_date' => $this->due_date?->toISOString(),
             'estimated_hours' => $this->estimated_hours,
             'completed_at' => $this->completed_at?->toISOString(),
+            'resolved_at' => $this->resolved_at?->toISOString(),
+            'closed_at' => $this->closed_at?->toISOString(),
             'project' => $this->whenLoaded('project', fn() => new ProjectResource($this->project)),
             'reporter' => $this->whenLoaded('reporter', fn() => new UserResource($this->reporter)),
             'assignee' => $this->whenLoaded('assignee', fn() => new UserResource($this->assignee)),

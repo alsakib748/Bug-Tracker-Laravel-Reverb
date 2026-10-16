@@ -37,6 +37,8 @@ class Issue extends Model
     protected $casts = [
         'due_date' => 'date',
         'completed_at' => 'datetime',
+        'resolved_at' => 'datetime',
+        'closed_at' => 'datetime',
         'estimated_hours' => 'float',
         'status' => IssueStatus::class,
         'priority' => Priority::class,
@@ -72,6 +74,12 @@ class Issue extends Model
     public function activityLogs()
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function statusHistories()
+    {
+        return $this->hasMany(IssueStatusHistory::class)
+            ->orderBy('created_at');
     }
 
     // ---------- Scopes  ----------

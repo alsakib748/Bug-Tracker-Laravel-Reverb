@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\IssueController;
+use App\Http\Controllers\Api\IssueWorkflowController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ProjectController;
@@ -56,6 +57,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Issues routes
     Route::apiResource('issues', IssueController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
+
+    // Issue workflow (status transitions + history)
+    Route::prefix('issues/{issue}')->group(function () {
+        Route::post('/transitions', [IssueWorkflowController::class, 'transition']);
+        Route::get('/status-history', [IssueWorkflowController::class, 'history']);
+        Route::get('/allowed-transitions', [IssueWorkflowController::class, 'allowedTransitions']);
+    });
 
     // Issues Business action routes
     Route::prefix('issues/{issue}')->group(function () {

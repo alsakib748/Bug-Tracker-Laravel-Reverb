@@ -8,13 +8,13 @@ use App\Enums\Priority;
 use App\Enums\Severity;
 use App\Events\IssueAssigned;
 use App\Events\IssueCreated;
-use App\Events\IssueStatusChanged;
 use App\Events\IssueUpdated;
 use App\Models\Issue;
-use App\Models\Project;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Services\Workflow\WorkflowService;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 
 class IssueService
 {
@@ -22,8 +22,11 @@ class IssueService
     protected NotificationService $notificationService;
     protected ActivityLogService $activityLogService;
 
-    public function __construct(NotificationService $notificationService, ActivityLogService $activityLogService)
-    {
+    public function __construct(
+        NotificationService $notificationService,
+        ActivityLogService $activityLogService,
+        private readonly WorkflowService $workflow,
+    ) {
         $this->notificationService = $notificationService;
         $this->activityLogService = $activityLogService;
     }
@@ -76,22 +79,28 @@ class IssueService
     public function createIssue(array $data): Issue
     {
 
-        $project = Project::findOrFail($data['project_id']);
         $reporter = User::findOrFail($data['reporter_id']);
 
-        $issue = Issue::create([
-            'project_id' => $data['project_id'],
-            'reporter_id' => $data['reporter_id'],
-            'assigned_to' => $data['assigned_to'] ?? null,
-            'title' => $data['title'],
-            'description' => $data['description'] ?? null,
-            'priority' => $data['priority'] ?? Priority::MEDIUM->value,
-            'severity' => $data['severity'] ?? Severity::MAJOR->value,
-            'status' => IssueStatus::OPEN->value,
-            'type' => $data['type'] ?? IssueType::BUG->value,
-            'due_date' => $data['due_date'] ?? null,
-            'estimated_hours' => $data['estimated_hours'] ?? null,
-        ]);
+        $issue = DB::transaction(function () use ($data) {
+            $issue = Issue::create([
+                'project_id' => $data['project_id'],
+                'reporter_id' => $data['reporter_id'],
+                'assigned_to' => $data['assigned_to'] ?? null,
+                'title' => $data['title'],
+                'description' => $data['description'] ?? null,
+                'priority' => $data['priority'] ?? Priority::MEDIUM->value,
+                'severity' => $data['severity'] ?? Severity::MAJOR->value,
+                'status' => IssueStatus::OPEN->value,
+                'type' => $data['type'] ?? IssueType::BUG->value,
+                'due_date' => $data['due_date'] ?? null,
+                'estimated_hours' => $data['estimated_hours'] ?? null,
+            ]);
+
+            // Record the initial status so the timeline is complete.
+            $this->workflow->recordInitialStatus($issue, auth()->user());
+
+            return $issue;
+        });
 
         event(new IssueCreated($issue));
 
@@ -146,14 +155,21 @@ class IssueService
 
         $issue->assigned_to = $userId;
 
-        // If status is 'open', change to 'assigned'
-        if ($issue->status === IssueStatus::OPEN) {
-            $issue->status = IssueStatus::ASSIGNED;
-        }
-
         $issue->save();
-
         $issue->refresh();
+
+        // If status is 'open', transition to 'assigned' through the workflow
+        // so the change is validated and recorded in the status history.
+        if ($issue->status === IssueStatus::OPEN) {
+            $result = $this->workflow->transition(
+                $issue->id,
+                IssueStatus::ASSIGNED->value,
+                auth()->user(),
+                "Assigned to {$user->name}",
+            );
+
+            $issue = $result['issue'];
+        }
 
         event(new IssueAssigned(
             $issue->load(['project', 'reporter', 'assignee']),
@@ -178,68 +194,32 @@ class IssueService
 
     /**
      * Change status of an issue following the workflow.
-     * Allowed transitions:
-     *   - open → assigned (only if assigned_to is set)
-     *   - assigned → in_progress
-     *   - in_progress → code_review
-     *   - code_review → testing
-     *   - testing → resolved
-     *   - resolved → closed
-     *   - testing → reopened
-     *   - reopened → in_progress
      *
-     * Also allow any status from any? For now, we enforce the workflow.
+     * All validation and persistence is delegated to {@see WorkflowService},
+     * which enforces the transition rules, records the status history and
+     * broadcasts the change after the transaction commits.
      */
     public function changeStatus(Issue $issue, string $newStatus): Issue
     {
-        $current = $issue->status;
-        $oldStatus = $current->value;
-        $new = IssueStatus::tryFrom($newStatus);
+        $result = $this->workflow->transition($issue->id, $newStatus, auth()->user());
 
-        if (!$new) {
-            throw new \Exception('Invalid status value.');
-        }
+        $updated = $result['issue'];
 
-        // Define allowed transitions
-        $transitions = [
-            IssueStatus::OPEN->value => [IssueStatus::ASSIGNED->value],
-            IssueStatus::ASSIGNED->value => [IssueStatus::IN_PROGRESS->value],
-            IssueStatus::IN_PROGRESS->value => [IssueStatus::CODE_REVIEW->value],
-            IssueStatus::CODE_REVIEW->value => [IssueStatus::TESTING->value],
-            IssueStatus::TESTING->value => [IssueStatus::RESOLVED->value, IssueStatus::REOPENED->value],
-            IssueStatus::RESOLVED->value => [IssueStatus::CLOSED->value, IssueStatus::REOPENED->value],
-            IssueStatus::REOPENED->value => [IssueStatus::IN_PROGRESS->value],
-            IssueStatus::CLOSED->value => [], // closed is final
-        ];
+        $this->notificationService->sendIssueStatusChanged(
+            $updated,
+            $result['from_status'],
+            $result['to_status'],
+            auth()->user()
+        );
 
-        if (!in_array($newStatus, $transitions[$current->value] ?? [])) {
-            throw new \Exception("Cannot transition from {$current->label()} to {$new->label()}.");
-        }
+        $this->activityLogService->logIssueStatusChanged(
+            $updated,
+            auth()->user(),
+            $result['from_status'],
+            $result['to_status']
+        );
 
-        // Additional validation:
-        // - Cannot set status to 'assigned' without an assignee.
-        if ($new === IssueStatus::ASSIGNED && !$issue->assigned_to) {
-            throw new \Exception('Cannot set status to "Assigned" without an assignee.');
-        }
-
-        $issue->status = $new;
-
-        // If closing, set completed_at; if reopening, clear it
-        if ($new === IssueStatus::CLOSED) {
-            $issue->completed_at = \Illuminate\Support\Carbon::now();
-        } elseif ($new === IssueStatus::REOPENED) {
-            $issue->completed_at = null;
-        }
-
-        $issue->save();
-
-        event(new IssueStatusChanged($issue->fresh(), $oldStatus, $new->value));
-
-        $this->notificationService->sendIssueStatusChanged($issue, $oldStatus, $new->value, auth()->user());
-
-        $this->activityLogService->logIssueStatusChanged($issue, auth()->user(), $oldStatus, $new->value);
-
-        return $issue->fresh(['project', 'reporter', 'assignee']);
+        return $updated->fresh(['project', 'reporter', 'assignee']);
 
     }
 
@@ -254,21 +234,25 @@ class IssueService
             throw new \Exception('Only resolved issues can be reopened.');
         }
 
-        $oldStatus = $issue->status->value;
+        $result = $this->workflow->transition(
+            $issue->id,
+            IssueStatus::REOPENED->value,
+            auth()->user(),
+            'Issue reopened',
+        );
 
-        $issue->status = IssueStatus::REOPENED;
-        $issue->completed_at = null;
-        $issue->save();
+        $updated = $result['issue'];
 
-        $issue = $issue->fresh(['project', 'reporter', 'assignee']);
+        $this->notificationService->sendIssueStatusChanged(
+            $updated,
+            $result['from_status'],
+            $result['to_status'],
+            auth()->user()
+        );
 
-        event(new IssueStatusChanged($issue, $oldStatus, IssueStatus::REOPENED->value));
+        $this->activityLogService->logIssueReopened($updated, auth()->user());
 
-        $this->notificationService->sendIssueStatusChanged($issue, $oldStatus, IssueStatus::REOPENED->value, auth()->user());
-
-        $this->activityLogService->logIssueReopened($issue, auth()->user());
-
-        return $issue;
+        return $updated;
     }
 
     /**
@@ -280,21 +264,25 @@ class IssueService
             throw new \Exception('Only resolved issues can be closed.');
         }
 
-        $oldStatus = $issue->status->value;
+        $result = $this->workflow->transition(
+            $issue->id,
+            IssueStatus::CLOSED->value,
+            auth()->user(),
+            'Issue closed',
+        );
 
-        $issue->status = IssueStatus::CLOSED;
-        $issue->completed_at = \Illuminate\Support\Carbon::now();
-        $issue->save();
+        $updated = $result['issue'];
 
-        $issue = $issue->fresh(['project', 'reporter', 'assignee']);
+        $this->notificationService->sendIssueStatusChanged(
+            $updated,
+            $result['from_status'],
+            $result['to_status'],
+            auth()->user()
+        );
 
-        event(new IssueStatusChanged($issue, $oldStatus, IssueStatus::CLOSED->value));
+        $this->activityLogService->logIssueClosed($updated, auth()->user());
 
-        $this->notificationService->sendIssueStatusChanged($issue, $oldStatus, IssueStatus::CLOSED->value, auth()->user());
-
-        $this->activityLogService->logIssueClosed($issue, auth()->user());
-
-        return $issue;
+        return $updated;
     }
 
 }

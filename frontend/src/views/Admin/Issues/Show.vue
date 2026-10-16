@@ -22,6 +22,12 @@ import CommentForm from '@/components/comments/CommentForm.vue';
 import AttachmentList from '@/components/attachments/AttachmentList.vue';
 import AttachmentUpload from '@/components/attachments/AttachmentUpload.vue';
 
+import IssueStatusSelect from '@/components/issues/IssueStatusSelect.vue';
+import TransitionDialog from '@/components/issues/TransitionDialog.vue';
+import IssueStatusTimeline from '@/components/issues/IssueStatusTimeline.vue';
+
+import { useIssueWorkflow } from '@/composables/useIssueWorkflow';
+
 import echo from '@/services/echo';
 
 const issue = ref(null);
@@ -38,13 +44,27 @@ const attachmentStore = useAttachmentStore();
 
 const { attachments, loading: attachmentsLoading } = storeToRefs(attachmentStore);
 
+// Issue workflow (status transitions + history)
+const {
+  history: statusHistory,
+  allowedTransitions,
+  loading: workflowLoading,
+  transitioning,
+  error: workflowError,
+  loadHistory,
+  loadAllowedTransitions,
+  performTransition,
+} = useIssueWorkflow(route.params.id);
+
+const showTransitionDialog = ref(false);
+const selectedTransition = ref(null);
+
 const comments = ref([]);
 const loadingComments = ref(false);
 const editingComment = ref(null);
 const showCommentForm = ref(false);
 
 const actionLoading = ref(false);
-const selectedStatus = ref(null);
 const selectedAssignee = ref(null);
 const projectMembers = ref([]);
 
@@ -55,42 +75,22 @@ const canManageMembers = computed(() => {
   return authStore.isAdmin || authStore.user?.id === issue.value.created_by;
 });
 
-const availableStatuses = computed(() => {
-  if (!issue.value) return [];
-  const transitions = {
-    open: ['assigned'],
-    assigned: ['in_progress'],
-    in_progress: ['code_review'],
-    code_review: ['testing'],
-    testing: ['resolved', 'reopened'],
-    resolved: ['closed', 'reopened'],
-    reopened: ['in_progress'],
-    closed: [],
-  };
+const openTransitionDialog = (toStatus) => {
+  if (!toStatus) return;
+  selectedTransition.value = toStatus;
+  showTransitionDialog.value = true;
+};
 
-  const next = transitions[issue.value.status] || [];
-  return next.map(s => ({
-    label: s.charAt(0).toUpperCase() + s.slice(1).replace('_', ' '),
-    value: s,
-  }));
-
-});
-
-
-const changeStatus = async () => {
-  if (!selectedStatus.value) return;
-  actionLoading.value = true;
+const confirmTransition = async ({ toStatus, reason }) => {
   try {
-    const updated = await issueStore.changeStatus(issue.value.id, selectedStatus.value);
+    const updated = await performTransition(toStatus, reason);
     issue.value = updated;
-    selectedStatus.value = null;
-    Swal.fire('Status update', '', 'success');
+    showTransitionDialog.value = false;
+    Swal.fire('Status updated', '', 'success');
   } catch (error) {
-    Swal.fire('error', error.response?.data?.message || 'Failed to change status', 'error');
-  } finally {
-    actionLoading.value = false;
+    // error message is exposed via workflowError and shown in the dialog
   }
-}
+};
 
 const assignUser = async () => {
   if (!selectedAssignee.value) return;
@@ -99,6 +99,8 @@ const assignUser = async () => {
     const updated = await issueStore.assignIssue(issue.value.id, selectedAssignee.value);
     issue.value = updated;
     selectedAssignee.value = null;
+    await loadHistory();
+    await loadAllowedTransitions();
     Swal.fire('Assigned', 'Issue assigned successfully.', 'success');
   } catch (error) {
     Swal.fire('Error', error.response?.data?.message || 'Failed to assign', 'error');
@@ -112,6 +114,8 @@ const reopen = async () => {
   try {
     const updated = await issueStore.reopenIssue(issue.value.id);
     issue.value = updated;
+    await loadHistory();
+    await loadAllowedTransitions();
     Swal.fire('Reopened', 'Issue has been reopened.', 'success');
   } catch (error) {
     Swal.fire('Error', error.response?.data?.message || 'Failed to reopen.', 'error');
@@ -125,6 +129,8 @@ const closeIssue = async () => {
   try {
     const updated = await issueStore.closeIssue(issue.value.id);
     issue.value = updated;
+    await loadHistory();
+    await loadAllowedTransitions();
     Swal.fire('Closed', 'Issue has been closed.', 'success');
   } catch (error) {
     Swal.fire('Error', error.response?.data?.message || 'Failed to close.', 'error');
@@ -239,6 +245,9 @@ const subscribeToIssueChannel = () => {
     .listen('.issue.status.changed', (event) => {
       if (issue.value?.id === event.issue_id) {
         issue.value.status = event.new_status
+        issue.value.status_label = event.status_label ?? issue.value.status_label
+        loadHistory()
+        loadAllowedTransitions()
       }
     })
 
@@ -308,6 +317,10 @@ onMounted(async () => {
   // 6. Load attachments
   await loadAttachments()
 
+  // 7. Load workflow data (status history + allowed transitions)
+  await loadHistory()
+  await loadAllowedTransitions()
+
   if (issue.value?.id) {
     echo.leave(`issue.${issue.value.id}`)
   }
@@ -357,13 +370,12 @@ onUnmounted(() => {
         </div>
         <hr class="my-4" />
         <h1 class="text-xl text-gray-700">Issue Assign To:</h1>
-        <div class="flex flex-wrap gap-2">
-          <!-- Status Change -->
-          <Select v-model="selectedStatus" :options="availableStatuses" optionLabel="label" optionValue="value"
-            placeholder="Change status" />
-          <Button @click="changeStatus" :loading="actionLoading" label="Update Status"
-            class="bg-blue-600 text-white px-4 py-2 rounded" />
 
+        <!-- Status Change (workflow) -->
+        <IssueStatusSelect :currentStatus="issue.status" :allowedTransitions="allowedTransitions"
+          :transitioning="transitioning" @transition="openTransitionDialog" />
+
+        <div class="flex flex-wrap gap-2 mt-3">
           <!-- Assign -->
           <Select v-model="selectedAssignee" :options="projectMembers" optionLabel="name" optionValue="id"
             placeholder="Assign to" />
@@ -387,6 +399,9 @@ onUnmounted(() => {
         <CommentForm :editing="!!editingComment" :initialContent="editingComment ? editingComment.comment : ''"
           @submit="handleCommentSubmit" @cancelEdit="cancelEdit" />
 
+        <!-- Status History -->
+        <IssueStatusTimeline :history="statusHistory" :loading="workflowLoading" />
+
       </ComponentCard>
     </div>
     <div v-else>
@@ -394,5 +409,8 @@ onUnmounted(() => {
         <i class="pi pi-spin pi-spinner" style="font-size: 4rem"></i>
       </div>
     </div>
+
+    <TransitionDialog v-model="showTransitionDialog" :fromStatus="issue?.status || ''" :toStatus="selectedTransition"
+      :submitting="transitioning" :errorMessage="workflowError" @confirm="confirmTransition" />
   </AdminLayout>
 </template>
