@@ -32,6 +32,7 @@ import LabelManager from '@/components/issues/LabelManager.vue';
 import WatchIssueButton from '@/components/issues/WatchIssueButton.vue';
 import IssueWatchers from '@/components/issues/IssueWatchers.vue';
 import IssueLinks from '@/components/issues/IssueLinks.vue';
+import AiBugReportPanel from '@/components/ai/AiBugReportPanel.vue';
 
 import { useIssueWorkflow } from '@/composables/useIssueWorkflow';
 import { useIssueLabels } from '@/composables/useIssueLabels';
@@ -39,9 +40,11 @@ import { useIssueWatchers } from '@/composables/useIssueWatchers';
 import { useIssueLinks } from '@/composables/useIssueLinks';
 
 import echo from '@/services/echo';
+import { applyBugReportSuggestions } from '@/services/aiBugReportApi';
 
 const issue = ref(null);
 const loading = ref(false);
+const aiPanel = ref(null);
 
 const route = useRoute();
 const router = useRouter();
@@ -119,6 +122,29 @@ const canManageMembers = computed(() => {
   if (!issue.value) return false;
   return authStore.isAdmin || authStore.user?.id === issue.value.created_by;
 });
+
+const assistantContext = computed(() => {
+  if (!issue.value) return {};
+  return {
+    title: issue.value.title,
+    description: issue.value.description,
+    type: issue.value.type,
+    severity: issue.value.severity,
+    priority: issue.value.priority,
+  };
+});
+
+const onAssistantApply = async ({ analysisId, accepted, reviewed }) => {
+  try {
+    await applyBugReportSuggestions(analysisId, { accepted, ...reviewed });
+    issue.value = await issueStore.fetchIssue(issue.value.id);
+    await loadIssueLabels();
+    aiPanel.value?.reset?.();
+    Swal.fire('Applied', 'AI suggestions have been applied to the issue.', 'success');
+  } catch (error) {
+    Swal.fire('Error', error.response?.data?.message || 'Failed to apply the suggestions.', 'error');
+  }
+};
 
 const openTransitionDialog = (toStatus) => {
   if (!toStatus) return;
@@ -542,6 +568,13 @@ onUnmounted(() => {
               @click="openLabelManager" />
           </div>
           <IssueLabels :labels="issueLabels" :loading="labelsLoading" removable @remove="removeLabel" />
+        </div>
+
+        <!-- AI Bug Report Assistant -->
+        <div class="mt-6 rounded-lg border border-dashed border-indigo-300 p-4">
+          <h2 class="mb-2 text-xl text-gray-700">AI Bug Report Assistant</h2>
+          <AiBugReportPanel ref="aiPanel" :projectId="issue.project?.id" :issueId="issue.id"
+            :context="assistantContext" :availableLabels="projectLabels" @apply="onAssistantApply" />
         </div>
 
         <!-- Watchers -->

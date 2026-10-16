@@ -73,6 +73,13 @@
             </div>
           </div>
 
+          <!-- AI Bug Report Assistant -->
+          <div class="rounded-lg border border-dashed border-indigo-300 p-4">
+            <h3 class="mb-2 text-lg font-medium text-gray-700">AI Bug Report Assistant</h3>
+            <AiBugReportPanel ref="aiPanel" :projectId="form.project_id" :context="assistantContext"
+              :availableLabels="projectLabels" @apply="onAssistantApply" />
+          </div>
+
           <!-- Actions -->
           <div class="flex justify-end gap-3 pt-4 border-t">
             <router-link to="/issues" class="px-4 py-2 border rounded-md hover:bg-gray-50">Cancel</router-link>
@@ -87,16 +94,18 @@
 
 <script setup>
 
-import { ref, reactive, onMounted, watch } from 'vue';
+import { ref, reactive, onMounted, watch, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useIssueStore } from '@/stores/issues';
 import { useProjectStore } from '@/stores/projects';
+import { fetchProjectLabels } from '@/services/labelsApi';
 import Swal from 'sweetalert2';
 import { toast } from 'vue3-toastify'
 
 import AdminLayout from '@/components/layout/AdminLayout.vue';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
 import ComponentCard from '@/components/common/ComponentCard.vue';
+import AiBugReportPanel from '@/components/ai/AiBugReportPanel.vue';
 
 
 // PrimeVue
@@ -115,6 +124,8 @@ const currentPageTitle = ref('Create Issue');
 const submitting = ref(false);
 const projects = ref([]);
 const projectMembers = ref([]);
+const projectLabels = ref([]);
+const aiPanel = ref(null);
 
 const form = reactive({
   project_id: null,
@@ -126,9 +137,18 @@ const form = reactive({
   assigned_to: null,
   due_date: null,
   estimated_hours: null,
+  label_ids: [],
 });
 
 const errors = reactive({});
+
+const assistantContext = computed(() => ({
+  title: form.title,
+  description: form.description,
+  type: form.type,
+  severity: form.severity,
+  priority: form.priority,
+}));
 
 const priorityOptions = [
   { label: 'Low', value: 'low' },
@@ -183,7 +203,30 @@ const loadProjectMembers = async (projectId) => {
 watch(() => form.project_id, (newVal) => {
   // console.log('Project ID changed to:', newVal);
   loadProjectMembers(newVal);
+  loadProjectLabels(newVal);
 });
+
+const loadProjectLabels = async (projectId) => {
+  projectLabels.value = [];
+  if (!projectId) return;
+  try {
+    const { data } = await fetchProjectLabels(projectId);
+    projectLabels.value = data.data || [];
+  } catch (error) {
+    console.error('Failed to load project labels: ', error);
+  }
+}
+
+const onAssistantApply = ({ accepted, reviewed }) => {
+  if (accepted.title && reviewed.reviewed_title) form.title = reviewed.reviewed_title;
+  if (accepted.description && reviewed.reviewed_description) form.description = reviewed.reviewed_description;
+  if (accepted.priority && reviewed.reviewed_priority) form.priority = reviewed.reviewed_priority;
+  if (accepted.label_ids?.length) form.label_ids = accepted.label_ids;
+
+  Object.keys(errors).forEach(key => delete errors[key]);
+  aiPanel.value?.reset?.();
+  toast.success('AI suggestions applied to the form');
+}
 
 const submitForm = async () => {
   // Reset errors

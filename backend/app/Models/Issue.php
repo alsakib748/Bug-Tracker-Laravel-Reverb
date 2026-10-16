@@ -21,6 +21,7 @@ class Issue extends Model
 
     protected $fillable = [
         'project_id',
+        'sprint_id',
         'reporter_id',
         'assigned_to',
         'title',
@@ -31,6 +32,9 @@ class Issue extends Model
         'type',
         'due_date',
         'estimated_hours',
+        'story_points',
+        'backlog_position',
+        'board_position',
         'completed_at'
     ];
 
@@ -40,6 +44,10 @@ class Issue extends Model
         'resolved_at' => 'datetime',
         'closed_at' => 'datetime',
         'estimated_hours' => 'float',
+        'story_points' => 'integer',
+        'backlog_position' => 'integer',
+        'board_position' => 'integer',
+        'version' => 'integer',
         'status' => IssueStatus::class,
         'priority' => Priority::class,
         'severity' => Severity::class,
@@ -103,6 +111,16 @@ class Issue extends Model
     public function incomingLinks()
     {
         return $this->hasMany(IssueLink::class, 'target_issue_id');
+    }
+
+    public function sprint()
+    {
+        return $this->belongsTo(Sprint::class);
+    }
+
+    public function sprintHistories()
+    {
+        return $this->hasMany(IssueSprintHistory::class)->orderBy('created_at');
     }
 
     // ---------- Scopes  ----------

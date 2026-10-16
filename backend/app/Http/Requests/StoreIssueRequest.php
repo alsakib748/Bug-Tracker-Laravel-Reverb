@@ -29,7 +29,7 @@ class StoreIssueRequest extends FormRequest
         $user = $this->user();
         $projectRule = ['required', 'exists:projects,id'];
 
-        if ($user && !$user->isAdmin()) {
+        if ($user && ! $user->isAdmin()) {
             $projectIds = $user->projects()->pluck('projects.id')->all();
             $projectRule[] = Rule::in($projectIds);
         }
@@ -45,6 +45,13 @@ class StoreIssueRequest extends FormRequest
             'assigned_to' => 'nullable|exists:users,id',
             'due_date' => 'nullable|date|after:date',
             'estimated_hours' => 'nullable|numeric|min:0.5|max:999',
+            'label_ids' => ['nullable', 'array'],
+            'label_ids.*' => [
+                'integer',
+                Rule::exists('labels', 'id')->where(
+                    fn ($query) => $query->where('project_id', $this->input('project_id'))
+                ),
+            ],
         ];
     }
 
@@ -56,7 +63,7 @@ class StoreIssueRequest extends FormRequest
             'title.required' => 'Issue title is required.',
             'assigned_to.exists' => 'The selected assignee does not exist.',
             'due_date.after' => 'Due date must be in the future.',
-            'estimated_hours.min' => 'Estimated hours must be at least 0.5.'
+            'estimated_hours.min' => 'Estimated hours must be at least 0.5.',
         ];
     }
 }

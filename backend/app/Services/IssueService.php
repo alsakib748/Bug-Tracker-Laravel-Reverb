@@ -11,15 +11,14 @@ use App\Events\IssueCreated;
 use App\Events\IssueUpdated;
 use App\Models\Issue;
 use App\Models\User;
-use App\Services\NotificationService;
 use App\Services\Workflow\WorkflowService;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class IssueService
 {
-
     protected NotificationService $notificationService;
+
     protected ActivityLogService $activityLogService;
 
     public function __construct(
@@ -36,15 +35,15 @@ class IssueService
         $user ??= auth()->user();
 
         $query = Issue::query()
-            ->when($user, fn($q) => $q->visibleTo($user))
+            ->when($user, fn ($q) => $q->visibleTo($user))
             ->with(['project', 'reporter', 'assignee', 'comments', 'attachments'])
-            ->when($filters['project_id'] ?? null, fn($q, $v) => $q->where('project_id', $v))
-            ->when($filters['status'] ?? null, fn($q, $v) => $q->where('status', $v))
-            ->when($filters['priority'] ?? null, fn($q, $v) => $q->where('priority', $v))
-            ->when($filters['severity'] ?? null, fn($q, $v) => $q->where('severity', $v))
-            ->when($filters['type'] ?? null, fn($q, $v) => $q->where('type', $v))
-            ->when($filters['assigned_to'] ?? null, fn($q, $v) => $q->where('assigned_to', $v))
-            ->when($filters['reporter_id'] ?? null, fn($q, $v) => $q->where('reporter_id', $v))
+            ->when($filters['project_id'] ?? null, fn ($q, $v) => $q->where('project_id', $v))
+            ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
+            ->when($filters['priority'] ?? null, fn ($q, $v) => $q->where('priority', $v))
+            ->when($filters['severity'] ?? null, fn ($q, $v) => $q->where('severity', $v))
+            ->when($filters['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
+            ->when($filters['assigned_to'] ?? null, fn ($q, $v) => $q->where('assigned_to', $v))
+            ->when($filters['reporter_id'] ?? null, fn ($q, $v) => $q->where('reporter_id', $v))
             ->when($filters['search'] ?? null, function ($q, $search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");
@@ -56,7 +55,7 @@ class IssueService
                     $sort = substr($sort, 1);
                 }
                 $q->orderBy($sort, $direction);
-            }, fn($q) => $q->orderBy('id', 'desc'));
+            }, fn ($q) => $q->orderBy('id', 'desc'));
 
         return $query->paginate($perPage);
 
@@ -69,7 +68,7 @@ class IssueService
         $issue = Issue::with(['project', 'reporter', 'assignee', 'comments.user', 'attachments'])
             ->findOrFail($id);
 
-        if ($user && !$issue->isVisibleTo($user)) {
+        if ($user && ! $issue->isVisibleTo($user)) {
             abort(403, 'You are not allowed to view this issue.');
         }
 
@@ -95,6 +94,18 @@ class IssueService
                 'due_date' => $data['due_date'] ?? null,
                 'estimated_hours' => $data['estimated_hours'] ?? null,
             ]);
+
+            // Attach any labels chosen while creating the issue (e.g. applied
+            // from an AI suggestion).
+            if (! empty($data['label_ids'])) {
+                $issue->labels()->attach(
+                    collect($data['label_ids'])
+                        ->mapWithKeys(fn ($labelId) => [
+                            $labelId => ['created_by' => auth()->id(), 'created_at' => now()],
+                        ])
+                        ->all()
+                );
+            }
 
             // Record the initial status so the timeline is complete.
             $this->workflow->recordInitialStatus($issue, auth()->user());
@@ -149,7 +160,7 @@ class IssueService
     {
         $user = User::findOrFail($userId);
 
-        if (!$issue->project->members()->where('user_id', $userId)->exists()) {
+        if (! $issue->project->members()->where('user_id', $userId)->exists()) {
             throw new \Exception('User is not a member of this project.');
         }
 
@@ -227,7 +238,6 @@ class IssueService
      * Reopen a resolved issue.
      * This is a specific action: sets status to 'reopened' and keeps assignee.
      */
-
     public function reopenIssue(Issue $issue): Issue
     {
         if ($issue->status !== IssueStatus::RESOLVED) {
@@ -284,5 +294,4 @@ class IssueService
 
         return $updated;
     }
-
 }

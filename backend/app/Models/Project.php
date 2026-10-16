@@ -6,6 +6,7 @@ use App\Enums\ProjectStatus;
 use App\Models\ActivityLog;
 use App\Models\Issue;
 use App\Models\Label;
+use App\Models\Sprint;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -60,6 +61,22 @@ class Project extends Model
     public function labels()
     {
         return $this->hasMany(Label::class);
+    }
+
+    /**
+     * * Sprints belonging to this project
+     */
+    public function sprints()
+    {
+        return $this->hasMany(Sprint::class);
+    }
+
+    /**
+     * * The single active sprint for this project (if any)
+     */
+    public function activeSprint()
+    {
+        return $this->hasOne(Sprint::class)->where('status', 'active');
     }
 
     /**

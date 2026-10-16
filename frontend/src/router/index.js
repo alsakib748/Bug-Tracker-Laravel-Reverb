@@ -31,6 +31,10 @@ import NotificationsShow from '@/views/Admin/Notifications/Show.vue'
 // Import Activity Logs Pages
 import ActivityLogsIndex from '@/views/Admin/ActivityLogs/Index.vue'
 
+// Import Board & Backlog Pages
+import BoardPage from '@/views/Admin/Board/BoardPage.vue'
+import BacklogPage from '@/views/Admin/Backlog/BacklogPage.vue'
+
 const routes = [
   {
     path: '/',
@@ -139,6 +143,18 @@ const routes = [
     path: '/activity-logs',
     name: 'ActivityLogsIndex',
     component: ActivityLogsIndex,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/board',
+    name: 'BoardPage',
+    component: BoardPage,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/backlog',
+    name: 'BacklogPage',
+    component: BacklogPage,
     meta: { requiresAuth: true },
   },
   {
