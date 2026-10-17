@@ -78,6 +78,25 @@ class AiBugReportSuggestion extends Model
         return in_array($this->status, ['ready', 'partially_applied'], true);
     }
 
+    /**
+     * Whether the analysis has reached its expiry while still actionable.
+     */
+    public function hasExpired(): bool
+    {
+        return $this->expires_at !== null
+            && $this->expires_at->isPast()
+            && in_array($this->status, ['queued', 'processing', 'ready', 'partially_applied'], true);
+    }
+
+    public function markAsExpired(): void
+    {
+        $this->update([
+            'status' => 'expired',
+            'error_code' => 'expired',
+            'completed_at' => now(),
+        ]);
+    }
+
     public function markAsProcessing(): void
     {
         $this->update([

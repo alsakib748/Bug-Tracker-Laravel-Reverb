@@ -43,6 +43,12 @@ class AnalyzeBugReportJob implements ShouldQueue
             return;
         }
 
+        if ($analysis->hasExpired()) {
+            $analysis->markAsExpired();
+
+            return;
+        }
+
         $analysis->markAsProcessing();
 
         try {

@@ -15,6 +15,7 @@ class ApplyBugReportSuggestionsService
 {
     public function __construct(
         private readonly ActivityLogService $activityLogService,
+        private readonly BugReportContextBuilder $contextBuilder,
     ) {}
 
     /**
@@ -33,6 +34,14 @@ class ApplyBugReportSuggestionsService
         User $actor,
         ?Issue $issue = null,
     ): ?Issue {
+        if ($analysis->hasExpired()) {
+            $analysis->markAsExpired();
+
+            throw ValidationException::withMessages([
+                'analysis' => 'This analysis has expired. Please run the analysis again.',
+            ]);
+        }
+
         if (! $analysis->isReviewable()) {
             throw ValidationException::withMessages([
                 'analysis' => 'This analysis is not in a reviewable state.',
@@ -42,6 +51,14 @@ class ApplyBugReportSuggestionsService
         $suggestions = $analysis->suggestions ?? [];
 
         return DB::transaction(function () use ($analysis, $suggestions, $accepted, $actor, $issue) {
+            // The analyzed issue may have changed since the analysis was run;
+            // applying stale suggestions would overwrite newer content.
+            if ($issue && $analysis->input_hash && $analysis->input_hash !== $this->contextBuilder->hashIssue($issue)) {
+                throw ValidationException::withMessages([
+                    'analysis' => 'This issue has changed since the analysis was run. Please run the analysis again.',
+                ]);
+            }
+
             $acceptedLabelIds = array_values(array_unique(array_map('intval', $accepted['label_ids'] ?? [])));
 
             if ($acceptedLabelIds !== [] && ! $issue) {
@@ -110,13 +127,39 @@ class ApplyBugReportSuggestionsService
                 );
             }
 
+            $status = $analysis->status;
+
+            if ($issue) {
+                $suggested = [
+                    'title' => ! empty($suggestions['improved_title']),
+                    'description' => ! empty($suggestions['improved_description']),
+                    'priority' => ! empty($suggestions['suggested_priority']),
+                    'label_ids' => ! empty($suggestions['suggested_labels']),
+                ];
+
+                $suggestedCount = count(array_filter($suggested));
+
+                $acceptedCount = count(array_filter([
+                    'title' => $suggested['title'] && ($accepted['title'] ?? false),
+                    'description' => $suggested['description'] && ($accepted['description'] ?? false),
+                    'priority' => $suggested['priority'] && ($accepted['priority'] ?? false),
+                    'label_ids' => $suggested['label_ids'] && $acceptedLabelIds !== [],
+                ]));
+
+                // Leaving a suggested field unapplied keeps the analysis open so
+                // the remaining suggestions can be reviewed later.
+                $status = ($suggestedCount > 0 && $acceptedCount === $suggestedCount)
+                    ? 'applied'
+                    : 'partially_applied';
+            }
+
             $analysis->update([
                 'review_decisions' => $accepted,
                 'applied_fields' => [
                     'fields' => array_keys($applied),
                     'label_ids' => $acceptedLabelIds,
                 ],
-                'status' => $issue ? 'applied' : $analysis->status,
+                'status' => $status,
                 'completed_at' => now(),
             ]);
 

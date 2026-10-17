@@ -69,6 +69,10 @@ class AiBugReportController extends Controller
     {
         $this->authorize('view', $analysis->project);
 
+        if ($analysis->hasExpired()) {
+            $analysis->markAsExpired();
+        }
+
         return new AiBugReportSuggestionResource($analysis);
     }
 

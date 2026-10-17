@@ -5,22 +5,20 @@ namespace App\Services\Ai;
 use App\Enums\IssueType;
 use App\Enums\Priority;
 use App\Enums\Severity;
+use App\Models\Issue;
 use App\Models\Project;
 
 class BugReportContextBuilder
 {
     /**
-     * Fields that make up the untrusted report payload.
+     * Fields persisted on the issue that the analysis fingerprint is built
+     * from, so a stored analysis can be detected as stale once they change.
      *
      * @var list<string>
      */
-    protected const REPORT_FIELDS = [
+    protected const FINGERPRINT_FIELDS = [
         'title',
         'description',
-        'expected_behavior',
-        'actual_behavior',
-        'reproduction_steps',
-        'environment',
     ];
 
     /**
@@ -62,17 +60,37 @@ class BugReportContextBuilder
     }
 
     /**
-     * Deterministically hash the analyzed input so identical reports can be
-     * de-duplicated or checked for staleness.
+     * Deterministically fingerprint the analyzed input so a stored analysis
+     * can be checked for staleness against the current issue.
      */
     public function hashContext(array $input): string
     {
+        return $this->fingerprint([
+            'title' => $input['title'] ?? '',
+            'description' => $input['description'] ?? '',
+        ]);
+    }
+
+    /**
+     * Fingerprint the persisted, comparable fields of an issue.
+     */
+    public function hashIssue(Issue $issue): string
+    {
+        return $this->fingerprint([
+            'title' => $issue->title,
+            'description' => $issue->description,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $values
+     */
+    protected function fingerprint(array $values): string
+    {
         $normalized = [];
 
-        foreach (self::REPORT_FIELDS as $field) {
-            $normalized[$field] = $field === 'reproduction_steps'
-                ? $this->normalizeSteps($input[$field] ?? [])
-                : trim((string) ($input[$field] ?? ''));
+        foreach (self::FINGERPRINT_FIELDS as $field) {
+            $normalized[$field] = trim((string) ($values[$field] ?? ''));
         }
 
         return hash('sha256', json_encode($normalized));

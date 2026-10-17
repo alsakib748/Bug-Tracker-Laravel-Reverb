@@ -9,6 +9,7 @@ use App\Models\Issue;
 use App\Models\Label;
 use App\Models\Project;
 use App\Models\User;
+use App\Services\Ai\BugReportContextBuilder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Ai\Exceptions\RateLimitedException;
@@ -180,6 +181,7 @@ class AiBugReportTest extends TestCase
             'project_id' => $this->project->id,
             'issue_id' => $issue->id,
             'requested_by' => $this->admin->id,
+            'input_hash' => app(BugReportContextBuilder::class)->hashIssue($issue),
             'suggestions' => $this->suggestionResponse([
                 'improved_title' => 'Login fails after password reset',
                 'suggested_priority' => 'high',
@@ -201,7 +203,110 @@ class AiBugReportTest extends TestCase
         $this->assertSame('Login fails after password reset', $issue->title);
         $this->assertSame('high', $issue->priority->value);
         $this->assertTrue($issue->labels()->whereKey($label->id)->exists());
+
+        // The description suggestion was left unapplied, so the analysis stays open.
+        $this->assertSame('partially_applied', $analysis->fresh()->status);
+    }
+
+    public function test_applying_all_suggestions_marks_the_analysis_applied(): void
+    {
+        $issue = Issue::factory()->create([
+            'project_id' => $this->project->id,
+            'reporter_id' => $this->admin->id,
+            'title' => 'Login broken',
+        ]);
+
+        $analysis = AiBugReportSuggestion::factory()->ready()->create([
+            'project_id' => $this->project->id,
+            'issue_id' => $issue->id,
+            'requested_by' => $this->admin->id,
+            'input_hash' => app(BugReportContextBuilder::class)->hashIssue($issue),
+        ]);
+
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/ai/bug-report-analyses/{$analysis->id}/apply", [
+            'accepted' => [
+                'title' => true,
+                'description' => true,
+                'priority' => true,
+            ],
+        ])->assertOk();
+
         $this->assertSame('applied', $analysis->fresh()->status);
+    }
+
+    public function test_expired_analysis_cannot_be_applied(): void
+    {
+        $analysis = AiBugReportSuggestion::factory()->ready()->create([
+            'project_id' => $this->project->id,
+            'requested_by' => $this->admin->id,
+            'expires_at' => now()->subHour(),
+        ]);
+
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/ai/bug-report-analyses/{$analysis->id}/apply", [
+            'accepted' => ['title' => true],
+        ])->assertStatus(422);
+
+        $this->assertSame('expired', $analysis->fresh()->status);
+    }
+
+    public function test_show_expires_a_stale_analysis(): void
+    {
+        $analysis = AiBugReportSuggestion::factory()->ready()->create([
+            'project_id' => $this->project->id,
+            'requested_by' => $this->admin->id,
+            'expires_at' => now()->subHour(),
+        ]);
+
+        Sanctum::actingAs($this->admin);
+
+        $this->getJson("/api/ai/bug-report-analyses/{$analysis->id}")
+            ->assertOk()
+            ->assertJsonPath('data.status', 'expired')
+            ->assertJsonMissingPath('data.suggestions');
+    }
+
+    public function test_prune_command_expires_stale_analyses(): void
+    {
+        $analysis = AiBugReportSuggestion::factory()->create([
+            'project_id' => $this->project->id,
+            'requested_by' => $this->admin->id,
+            'status' => 'queued',
+            'expires_at' => now()->subHour(),
+        ]);
+
+        $this->artisan('ai:prune-analyses')->assertSuccessful();
+
+        $this->assertSame('expired', $analysis->fresh()->status);
+    }
+
+    public function test_analysis_is_stale_when_the_issue_changed(): void
+    {
+        $issue = Issue::factory()->create([
+            'project_id' => $this->project->id,
+            'reporter_id' => $this->admin->id,
+            'title' => 'Original title',
+        ]);
+
+        $analysis = AiBugReportSuggestion::factory()->ready()->create([
+            'project_id' => $this->project->id,
+            'issue_id' => $issue->id,
+            'requested_by' => $this->admin->id,
+            'input_hash' => app(BugReportContextBuilder::class)->hashIssue($issue),
+        ]);
+
+        $issue->update(['title' => 'Changed after analysis']);
+
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/ai/bug-report-analyses/{$analysis->id}/apply", [
+            'accepted' => ['title' => true],
+        ])->assertStatus(422);
+
+        $this->assertSame('Changed after analysis', $issue->fresh()->title);
     }
 
     public function test_apply_rejects_labels_from_another_project(): void
@@ -218,6 +323,7 @@ class AiBugReportTest extends TestCase
             'project_id' => $this->project->id,
             'issue_id' => $issue->id,
             'requested_by' => $this->admin->id,
+            'input_hash' => app(BugReportContextBuilder::class)->hashIssue($issue),
         ]);
 
         Sanctum::actingAs($this->admin);

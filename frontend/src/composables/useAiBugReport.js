@@ -6,7 +6,7 @@ import {
   dismissBugReportAnalysis,
 } from '@/services/aiBugReportApi'
 
-const TERMINAL_STATUSES = ['ready', 'failed', 'dismissed']
+const TERMINAL_STATUSES = ['ready', 'partially_applied', 'failed', 'expired', 'dismissed']
 const POLL_INTERVAL = 1500
 const POLL_TIMEOUT = 90000
 
@@ -74,12 +74,12 @@ export function useAiBugReport() {
 
         if (TERMINAL_STATUSES.includes(payload.status)) {
           suggestions.value = payload.suggestions || null
+          analyzing.value = false
 
-          if (payload.status === 'ready') {
-            analyzing.value = false
-          } else if (payload.status === 'failed') {
-            analyzing.value = false
+          if (payload.status === 'failed') {
             error.value = failureMessage(payload.error_code)
+          } else if (payload.status === 'expired') {
+            error.value = 'This analysis expired. Please analyze the report again.'
           }
           return
         }
