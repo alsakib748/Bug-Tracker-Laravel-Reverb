@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\Workflow\WorkflowService;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class IssueService
 {
@@ -113,7 +114,7 @@ class IssueService
             return $issue;
         });
 
-        event(new IssueCreated($issue));
+        event(new IssueCreated($issue, (string) Str::uuid(), auth()->id()));
 
         $this->notificationService->sendIssueCreated($issue, $reporter);
         $this->activityLogService->logIssueCreated($issue, auth()->user());
@@ -138,7 +139,7 @@ class IssueService
             'estimated_hours' => $data['estimated_hours'] ?? $issue->estimated_hours,
         ]);
 
-        event(new IssueUpdated($issue->fresh()));
+        event(new IssueUpdated($issue->fresh(), $old, (string) Str::uuid(), auth()->id()));
 
         $this->activityLogService->logIssueUpdated($issue, auth()->user(), $old, $issue->getAttributes());
 
@@ -166,6 +167,8 @@ class IssueService
 
         $issue->assigned_to = $userId;
 
+        $fromAssigneeId = $issue->getOriginal('assigned_to');
+
         $issue->save();
         $issue->refresh();
 
@@ -184,11 +187,17 @@ class IssueService
 
         event(new IssueAssigned(
             $issue->load(['project', 'reporter', 'assignee']),
-            $user->id
+            $user->id,
+            $fromAssigneeId,
+            (string) Str::uuid(),
+            auth()->id(),
         ));
 
         event(new IssueUpdated(
-            $issue->load(['project', 'reporter', 'assignee'])
+            $issue->load(['project', 'reporter', 'assignee']),
+            [],
+            (string) Str::uuid(),
+            auth()->id(),
         ));
 
         $this->activityLogService->logIssueAssigned($issue, auth()->user(), $user);

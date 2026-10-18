@@ -5,7 +5,6 @@ namespace App\Events;
 use App\Models\Issue;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -28,8 +27,9 @@ class IssueStatusChanged implements ShouldBroadcast
         public string $newStatus,
         public ?int $historyId = null,
         public ?string $actorName = null,
-    ) {
-    }
+        public ?string $eventId = null,
+        public ?int $actorId = null,
+    ) {}
 
     /**
      * Get the channels the event should broadcast on.
@@ -40,11 +40,11 @@ class IssueStatusChanged implements ShouldBroadcast
     {
         return [
             new PrivateChannel(
-                'issue.' . $this->issue->id
+                'issue.'.$this->issue->id
             ),
 
             new PrivateChannel(
-                'project.' . $this->issue->project_id
+                'project.'.$this->issue->project_id
             ),
         ];
     }
@@ -68,5 +68,4 @@ class IssueStatusChanged implements ShouldBroadcast
             'changed_at' => now()->toISOString(),
         ];
     }
-
 }

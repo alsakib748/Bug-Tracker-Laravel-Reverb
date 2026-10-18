@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+    'github' => [
+        'app_id' => env('GITHUB_APP_ID'),
+        'private_key_path' => env('GITHUB_PRIVATE_KEY_PATH'),
+        'webhook_secret' => env('GITHUB_WEBHOOK_SECRET'),
+        'client_id' => env('GITHUB_CLIENT_ID'),
+        'client_secret' => env('GITHUB_CLIENT_SECRET'),
+    ],
+
 ];

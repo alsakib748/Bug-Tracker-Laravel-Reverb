@@ -32,12 +32,14 @@ import LabelManager from '@/components/issues/LabelManager.vue';
 import WatchIssueButton from '@/components/issues/WatchIssueButton.vue';
 import IssueWatchers from '@/components/issues/IssueWatchers.vue';
 import IssueLinks from '@/components/issues/IssueLinks.vue';
+import GitHubLinksPanel from '@/components/github/GitHubLinksPanel.vue';
 import AiBugReportPanel from '@/components/ai/AiBugReportPanel.vue';
 
 import { useIssueWorkflow } from '@/composables/useIssueWorkflow';
 import { useIssueLabels } from '@/composables/useIssueLabels';
 import { useIssueWatchers } from '@/composables/useIssueWatchers';
 import { useIssueLinks } from '@/composables/useIssueLinks';
+import { useGitHubLinks } from '@/composables/useGitHubLinks';
 
 import echo from '@/services/echo';
 import { applyBugReportSuggestions } from '@/services/aiBugReportApi';
@@ -106,6 +108,19 @@ const {
   create: createLink,
   remove: removeLink,
 } = useIssueLinks(route.params.id);
+
+// GitHub development links (PRs / commits)
+const {
+  links: githubLinks,
+  candidates: githubCandidates,
+  loading: githubLoading,
+  linking: githubLinking,
+  error: githubError,
+  load: loadGitHubLinks,
+  loadCandidates: loadGitHubCandidates,
+  link: linkGitHubPr,
+  remove: removeGitHubLink,
+} = useGitHubLinks(route.params.id);
 
 const comments = ref([]);
 const loadingComments = ref(false);
@@ -225,6 +240,23 @@ const onRemoveLink = async (link) => {
     await removeLink(link);
   } catch (error) {
     Swal.fire('Error', error.response?.data?.message || 'Failed to remove link.', 'error');
+  }
+};
+
+// ---- GitHub links ----
+const onGitHubLink = async (pullRequestId) => {
+  try {
+    await linkGitHubPr(pullRequestId);
+  } catch (error) {
+    // error is exposed via githubError and shown in the GitHubLinksPanel
+  }
+};
+
+const onGitHubRemoveLink = async (link) => {
+  try {
+    await removeGitHubLink(link);
+  } catch (error) {
+    Swal.fire('Error', error.response?.data?.message || 'Failed to remove GitHub link.', 'error');
   }
 };
 
@@ -489,6 +521,8 @@ onMounted(async () => {
   await loadProjectLabels(issue.value.project?.id)
   await loadWatchers()
   await loadLinks()
+  await loadGitHubLinks()
+  loadGitHubCandidates()
 
   if (issue.value?.id) {
     echo.leave(`issue.${issue.value.id}`)
@@ -597,6 +631,12 @@ onUnmounted(() => {
         <div class="mt-6">
           <IssueLinks :links="links" :loading="linksLoading" :creating="linksCreating" :error="linksError"
             @create="onCreateLink" @remove="onRemoveLink" />
+        </div>
+
+        <!-- GitHub development links -->
+        <div class="mt-6 rounded-lg border border-gray-200 p-4">
+          <GitHubLinksPanel :links="githubLinks" :candidates="githubCandidates" :loading="githubLoading"
+            :linking="githubLinking" :error="githubError" @link="onGitHubLink" @remove="onGitHubRemoveLink" />
         </div>
 
         <!-- Status History -->

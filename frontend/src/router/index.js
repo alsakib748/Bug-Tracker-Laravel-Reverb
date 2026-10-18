@@ -35,6 +35,18 @@ import ActivityLogsIndex from '@/views/Admin/ActivityLogs/Index.vue'
 import BoardPage from '@/views/Admin/Board/BoardPage.vue'
 import BacklogPage from '@/views/Admin/Backlog/BacklogPage.vue'
 
+// Import Automation Pages
+import AutomationIndex from '@/views/Admin/Automation/Index.vue'
+import AutomationCreate from '@/views/Admin/Automation/Create.vue'
+import AutomationEdit from '@/views/Admin/Automation/Edit.vue'
+import AutomationShow from '@/views/Admin/Automation/Show.vue'
+
+// Import Analytics Pages
+import AnalyticsPage from '@/views/Admin/Analytics/AnalyticsPage.vue'
+
+// Import GitHub Integration Page
+import GitHubIntegrationPage from '@/views/Admin/GitHub/IntegrationPage.vue'
+
 const routes = [
   {
     path: '/',
@@ -155,6 +167,42 @@ const routes = [
     path: '/backlog',
     name: 'BacklogPage',
     component: BacklogPage,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/automation',
+    name: 'AutomationIndex',
+    component: AutomationIndex,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/automation/create',
+    name: 'AutomationCreate',
+    component: AutomationCreate,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/automation/:id/edit',
+    name: 'AutomationEdit',
+    component: AutomationEdit,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/automation/:id',
+    name: 'AutomationShow',
+    component: AutomationShow,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/analytics',
+    name: 'AnalyticsPage',
+    component: AnalyticsPage,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/github',
+    name: 'GitHubIntegrationPage',
+    component: GitHubIntegrationPage,
     meta: { requiresAuth: true },
   },
   {

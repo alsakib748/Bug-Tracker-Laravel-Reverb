@@ -7,6 +7,7 @@ use App\Events\IssueStatusChanged;
 use App\Models\Issue;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -21,8 +22,7 @@ final class WorkflowService
 {
     public function __construct(
         private readonly IssueTransitionRules $rules,
-    ) {
-    }
+    ) {}
 
     /**
      * Perform a status transition atomically and record its history.
@@ -58,14 +58,14 @@ final class WorkflowService
                 ]);
             }
 
-            if (!$this->rules->canTransition($oldStatus, $newStatus)) {
+            if (! $this->rules->canTransition($oldStatus, $newStatus)) {
                 throw ValidationException::withMessages([
                     'status' => "Transition from '{$oldStatus}' to '{$newStatus}' is not allowed.",
                 ]);
             }
 
             // Business rule: an issue cannot become "assigned" with no assignee.
-            if ($newStatus === IssueStatus::ASSIGNED->value && !$issue->assigned_to) {
+            if ($newStatus === IssueStatus::ASSIGNED->value && ! $issue->assigned_to) {
                 throw ValidationException::withMessages([
                     'status' => 'Cannot set status to "Assigned" without an assignee.',
                 ]);
@@ -104,6 +104,8 @@ final class WorkflowService
                 $result['to_status'],
                 $result['history_id'],
                 $result['actor_name'],
+                (string) Str::uuid(),
+                $result['actor_id'],
             ));
         });
 

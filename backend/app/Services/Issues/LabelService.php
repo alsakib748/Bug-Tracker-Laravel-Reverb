@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Services\ActivityLogService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -19,8 +20,7 @@ final class LabelService
 {
     public function __construct(
         private readonly ActivityLogService $activityLogs,
-    ) {
-    }
+    ) {}
 
     /**
      * @return Collection<int, Label>
@@ -100,7 +100,7 @@ final class LabelService
     /**
      * Replace the issue's labels with the given set.
      *
-     * @param array<int, int|string> $labelIds
+     * @param  array<int, int|string>  $labelIds
      * @return Collection<int, Label>
      */
     public function syncIssueLabels(Issue $issue, User $actor, array $labelIds): Collection
@@ -147,8 +147,15 @@ final class LabelService
             );
         }
 
-        DB::afterCommit(function () use ($issue, $labels) {
-            event(new IssueLabelsUpdated($issue, $labels->pluck('id')->all()));
+        DB::afterCommit(function () use ($issue, $labels, $added, $removed, $actor) {
+            event(new IssueLabelsUpdated(
+                $issue,
+                $labels->pluck('id')->all(),
+                $added,
+                $removed,
+                (string) Str::uuid(),
+                $actor->id,
+            ));
         });
 
         return $labels;

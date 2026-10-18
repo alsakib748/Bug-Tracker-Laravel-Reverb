@@ -226,6 +226,21 @@ const menuGroups = [
         path: "/users",
       },
       {
+        icon: PlugInIcon,
+        name: "Automation",
+        path: "/automation",
+      },
+      {
+        icon: PlugInIcon,
+        name: "GitHub",
+        path: "/github",
+      },
+      {
+        icon: PieChartIcon,
+        name: "Analytics",
+        path: "/analytics",
+      },
+      {
         icon: GridIcon,
         name: "Notifications",
         path: "/notifications",

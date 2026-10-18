@@ -3,11 +3,6 @@
 namespace App\Models;
 
 use App\Enums\ProjectStatus;
-use App\Models\ActivityLog;
-use App\Models\Issue;
-use App\Models\Label;
-use App\Models\Sprint;
-use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -22,7 +17,7 @@ class Project extends Model
         'description',
         'color',
         'status',
-        'created_by'
+        'created_by',
     ];
 
     protected $casts = [
@@ -87,6 +82,40 @@ class Project extends Model
         return $this->hasMany(ActivityLog::class);
     }
 
+    /**
+     * * Automation rules configured for this project
+     */
+    public function automationRules()
+    {
+        return $this->hasMany(AutomationRule::class);
+    }
+
+    /**
+     * * Automation execution records for this project
+     */
+    public function automationExecutions()
+    {
+        return $this->hasMany(AutomationExecution::class);
+    }
+
+    /**
+     * * AI-generated project insights for this project
+     */
+    public function insights()
+    {
+        return $this->hasMany(ProjectInsight::class);
+    }
+
+    /**
+     * * GitHub repositories linked to this project
+     */
+    public function githubRepositories()
+    {
+        return $this->belongsToMany(GitHubRepository::class, 'github_project_repositories', 'project_id', 'github_repository_id')
+            ->withPivot(['linked_by', 'is_default', 'settings'])
+            ->withTimestamps();
+    }
+
     public function scopeVisibleTo(Builder $query, User $user): Builder
     {
         if ($user->isAdmin()) {
@@ -117,5 +146,4 @@ class Project extends Model
             ->wherePivot('role', 'manager')
             ->exists();
     }
-
 }

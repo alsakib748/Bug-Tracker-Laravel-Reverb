@@ -5,7 +5,6 @@ namespace App\Events;
 use App\Models\Issue;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -20,9 +19,13 @@ class IssueAssigned implements ShouldBroadcast
     /**
      * Create a new event instance.
      */
-    public function __construct(public Issue $issue, public int $assignedTo)
-    {
-    }
+    public function __construct(
+        public Issue $issue,
+        public int $assignedTo,
+        public ?int $fromAssigneeId = null,
+        public ?string $eventId = null,
+        public ?int $actorId = null,
+    ) {}
 
     /**
      * Get the channels the event should broadcast on.
@@ -33,11 +36,11 @@ class IssueAssigned implements ShouldBroadcast
     {
         return [
             new PrivateChannel(
-                'issue.' . $this->issue->id,
+                'issue.'.$this->issue->id,
             ),
             new PrivateChannel(
-                'user.' . $this->assignedTo
-            )
+                'user.'.$this->assignedTo
+            ),
         ];
     }
 
@@ -59,5 +62,4 @@ class IssueAssigned implements ShouldBroadcast
             'assigned_to' => $this->assignedTo,
         ];
     }
-
 }

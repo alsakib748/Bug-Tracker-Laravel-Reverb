@@ -113,6 +113,11 @@ class Issue extends Model
         return $this->hasMany(IssueLink::class, 'target_issue_id');
     }
 
+    public function githubLinks()
+    {
+        return $this->hasMany(GitHubIssueLink::class);
+    }
+
     public function sprint()
     {
         return $this->belongsTo(Sprint::class);

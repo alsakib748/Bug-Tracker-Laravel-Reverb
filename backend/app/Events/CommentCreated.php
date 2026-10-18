@@ -5,7 +5,6 @@ namespace App\Events;
 use App\Models\Comment;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -20,8 +19,11 @@ class CommentCreated implements ShouldBroadcast
     /**
      * Create a new event instance.
      */
-    public function __construct(public Comment $comment)
-    {
+    public function __construct(
+        public Comment $comment,
+        public ?string $eventId = null,
+        public ?int $actorId = null,
+    ) {
         $this->comment->load('user');
     }
 
@@ -34,8 +36,8 @@ class CommentCreated implements ShouldBroadcast
     {
         return [
             new PrivateChannel(
-                'issue.' . $this->comment->issue_id
-            )
+                'issue.'.$this->comment->issue_id
+            ),
         ];
     }
 
@@ -57,5 +59,4 @@ class CommentCreated implements ShouldBroadcast
             'comment' => $this->comment->toArray(),
         ];
     }
-
 }

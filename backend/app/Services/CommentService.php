@@ -7,14 +7,14 @@ use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\User;
 use App\Notifications\SystemNotification;
-use App\Services\NotificationService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 
 class CommentService
 {
-
     protected NotificationService $notificationService;
+
     protected ActivityLogService $activityLogService;
 
     public function __construct(NotificationService $notificationService, ActivityLogService $activityLogService)
@@ -42,17 +42,17 @@ class CommentService
         $isCreatorOrAssignee = $issue->reporter_id === $user->id || $issue->assigned_to === $user->id;
         $isAdmin = ($user->role?->value ?? null) === 'admin';
 
-        if (!$isMember && !$isCreatorOrAssignee && !$isAdmin) {
+        if (! $isMember && ! $isCreatorOrAssignee && ! $isAdmin) {
             throw new \Exception('You are not a member of this project.');
         }
 
-        $comment = new Comment();
+        $comment = new Comment;
         $comment->issue_id = $issue->id;
         $comment->user_id = $user->id;
         $comment->comment = $content;
         $comment->save();
 
-        event(new CommentCreated($comment->fresh()));
+        event(new CommentCreated($comment->fresh(), (string) Str::uuid(), $user->id));
 
         $this->activityLogService->logCommentAdded($issue, $user, $content);
         $this->notificationService->sendCommentAdded($comment, $user);
@@ -76,6 +76,7 @@ class CommentService
         $comment->comment = $content;
         $comment->save();
         $this->activityLogService->logCommentUpdated($comment->issue, auth()->user(), $oldContent, $content);
+
         return $comment->fresh('user');
     }
 
@@ -86,5 +87,4 @@ class CommentService
         $comment->delete();
         $this->activityLogService->logCommentDeleted($issue, auth()->user(), $content);
     }
-
 }

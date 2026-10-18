@@ -5,7 +5,6 @@ namespace App\Events;
 use App\Models\Issue;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
@@ -20,8 +19,12 @@ class IssueUpdated implements ShouldBroadcast
     /**
      * Create a new event instance.
      */
-    public function __construct(public Issue $issue)
-    {
+    public function __construct(
+        public Issue $issue,
+        public array $before = [],
+        public ?string $eventId = null,
+        public ?int $actorId = null,
+    ) {
         $this->issue->load([
             'project',
             'reporter',
@@ -38,8 +41,8 @@ class IssueUpdated implements ShouldBroadcast
     {
         return [
             new PrivateChannel(
-                'issue.' . $this->issue->id
-            )
+                'issue.'.$this->issue->id
+            ),
         ];
     }
 

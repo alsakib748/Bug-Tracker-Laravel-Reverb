@@ -3,7 +3,6 @@
 namespace App\Events;
 
 use App\Models\Issue;
-use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -19,8 +18,11 @@ class IssueCreated implements ShouldBroadcast
     /**
      * Create a new event instance.
      */
-    public function __construct(public Issue $issue)
-    {
+    public function __construct(
+        public Issue $issue,
+        public ?string $eventId = null,
+        public ?int $actorId = null,
+    ) {
         $this->issue->load(['project', 'reporter', 'assignee']);
     }
 
@@ -33,8 +35,8 @@ class IssueCreated implements ShouldBroadcast
     {
         return [
             new PrivateChannel(
-                'project.' . $this->issue->project_id
-            )
+                'project.'.$this->issue->project_id
+            ),
         ];
     }
 
@@ -59,5 +61,4 @@ class IssueCreated implements ShouldBroadcast
             'issue' => $this->issue->toArray(),
         ];
     }
-
 }

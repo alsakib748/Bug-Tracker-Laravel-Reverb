@@ -19,8 +19,11 @@ class IssueLabelsUpdated implements ShouldBroadcast
     public function __construct(
         public Issue $issue,
         public array $labelIds,
-    ) {
-    }
+        public array $addedLabelIds = [],
+        public array $removedLabelIds = [],
+        public ?string $eventId = null,
+        public ?int $actorId = null,
+    ) {}
 
     /**
      * @return array<int, PrivateChannel>
@@ -28,7 +31,7 @@ class IssueLabelsUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('issue.' . $this->issue->id),
+            new PrivateChannel('issue.'.$this->issue->id),
         ];
     }
 
