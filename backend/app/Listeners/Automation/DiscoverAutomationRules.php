@@ -9,6 +9,12 @@ use App\Events\IssueCreated;
 use App\Events\IssueLabelsUpdated;
 use App\Events\IssueStatusChanged;
 use App\Events\IssueUpdated;
+use App\Integrations\GitHub\Events\GitHubAutomationEvent;
+use App\Integrations\GitHub\Events\GitHubChecksFailed;
+use App\Integrations\GitHub\Events\GitHubCommitPushed;
+use App\Integrations\GitHub\Events\GitHubPullRequestClosed;
+use App\Integrations\GitHub\Events\GitHubPullRequestMerged;
+use App\Integrations\GitHub\Events\GitHubPullRequestOpened;
 use App\Integrations\GitHub\Events\PullRequestSynced;
 use App\Jobs\Automation\EvaluateAutomationRule;
 use App\Models\AutomationRule;
@@ -29,6 +35,13 @@ class DiscoverAutomationRules
         // A PR can be linked to several issues; evaluate each one.
         if ($event instanceof PullRequestSynced) {
             $this->handlePullRequestSynced($event);
+
+            return;
+        }
+
+        // Granular GitHub lifecycle events carry their own linked-issue list.
+        if ($event instanceof GitHubAutomationEvent) {
+            $this->handleGitHubEvent($event);
 
             return;
         }
@@ -67,6 +80,22 @@ class DiscoverAutomationRules
                 $issue,
                 $this->buildContext($event, AutomationTrigger::PULL_REQUEST_SYNCED, $issue),
             );
+        }
+    }
+
+    /**
+     * Queue one evaluation per issue linked to a granular GitHub event.
+     */
+    protected function handleGitHubEvent(GitHubAutomationEvent $event): void
+    {
+        $trigger = $this->resolveTrigger($event);
+
+        if (! $trigger) {
+            return;
+        }
+
+        foreach ($event->linkedIssues as $issue) {
+            $this->evaluateForIssue($trigger, $issue, $this->buildContext($event, $trigger, $issue));
         }
     }
 
@@ -110,6 +139,11 @@ class DiscoverAutomationRules
             $event instanceof IssueAssigned => AutomationTrigger::ISSUE_ASSIGNED,
             $event instanceof IssueLabelsUpdated => AutomationTrigger::ISSUE_LABEL_CHANGED,
             $event instanceof CommentCreated => AutomationTrigger::COMMENT_CREATED,
+            $event instanceof GitHubPullRequestOpened => AutomationTrigger::GITHUB_PR_OPENED,
+            $event instanceof GitHubPullRequestMerged => AutomationTrigger::GITHUB_PR_MERGED,
+            $event instanceof GitHubPullRequestClosed => AutomationTrigger::GITHUB_PR_CLOSED,
+            $event instanceof GitHubChecksFailed => AutomationTrigger::GITHUB_CHECKS_FAILED,
+            $event instanceof GitHubCommitPushed => AutomationTrigger::GITHUB_COMMIT_PUSHED,
             default => null,
         };
     }
@@ -183,6 +217,8 @@ class DiscoverAutomationRules
 
             $context['pr_state'] = $pr->is_merged ? 'merged' : $pr->state;
             $context['pr_action'] = $event->action;
+            $context['pr_author'] = $pr->author_login;
+            $context['repository'] = $pr->repository?->full_name;
             $context['pull_request'] = [
                 'number' => $pr->number,
                 'title' => $pr->title,
@@ -192,6 +228,38 @@ class DiscoverAutomationRules
                 'draft' => $pr->draft,
                 'head_ref' => $pr->head_ref,
             ];
+        }
+
+        if ($event instanceof GitHubPullRequestOpened
+            || $event instanceof GitHubPullRequestMerged
+            || $event instanceof GitHubPullRequestClosed) {
+            $pr = $event->pullRequest;
+
+            $context['pr_author'] = $pr->author_login;
+            $context['pr_target_branch'] = $pr->base_ref;
+            $context['repository'] = $pr->repository?->full_name;
+            $context['pull_request'] = [
+                'number' => $pr->number,
+                'title' => $pr->title,
+                'url' => $pr->html_url,
+                'state' => $pr->state,
+                'is_merged' => $pr->is_merged,
+                'draft' => $pr->draft,
+                'head_ref' => $pr->head_ref,
+                'base_ref' => $pr->base_ref,
+                'author' => $pr->author_login,
+            ];
+        }
+
+        if ($event instanceof GitHubChecksFailed) {
+            $context['repository'] = $event->repository->full_name;
+            $context['check'] = $event->checkRun;
+        }
+
+        if ($event instanceof GitHubCommitPushed) {
+            $context['repository'] = $event->repository->full_name;
+            $context['commit_author'] = $event->commits[0]['author'] ?? null;
+            $context['commits'] = $event->commits;
         }
 
         return $context;

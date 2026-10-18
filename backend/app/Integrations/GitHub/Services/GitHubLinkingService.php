@@ -188,6 +188,47 @@ class GitHubLinkingService
     }
 
     /**
+     * Resolve issues tied to a specific head commit: directly via commit links,
+     * or indirectly via a pull request whose head matches the commit.
+     *
+     * @return Collection<int, Issue>
+     */
+    public function issuesForHeadSha(GitHubRepository $repository, string $headSha): Collection
+    {
+        if ($headSha === '') {
+            return new Collection;
+        }
+
+        $pullRequestIds = GitHubPullRequest::query()
+            ->where('github_repository_id', $repository->id)
+            ->where('head_sha', $headSha)
+            ->pluck('github_pr_id');
+
+        $issueIds = GitHubIssueLink::query()
+            ->where('github_repository_id', $repository->id)
+            ->where(function ($query) use ($headSha, $pullRequestIds) {
+                $query
+                    ->where(function ($query) use ($headSha) {
+                        $query->where('entity_type', GitHubEntityType::COMMIT->value)
+                            ->where('external_sha', $headSha);
+                    })
+                    ->orWhere(function ($query) use ($pullRequestIds) {
+                        $query->where('entity_type', GitHubEntityType::PULL_REQUEST->value)
+                            ->whereIn('github_entity_id', $pullRequestIds);
+                    });
+            })
+            ->pluck('issue_id')
+            ->unique()
+            ->all();
+
+        if ($issueIds === []) {
+            return new Collection;
+        }
+
+        return Issue::whereIn('id', $issueIds)->get();
+    }
+
+    /**
      * Only persist https://github.com/ URLs; anything else falls back to a
      * URL constructed from repository data.
      */

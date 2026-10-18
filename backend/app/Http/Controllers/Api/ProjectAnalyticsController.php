@@ -43,4 +43,13 @@ class ProjectAnalyticsController extends Controller
 
         return response()->json($this->analytics->workflow($filters));
     }
+
+    public function github(Request $request, Project $project): JsonResponse
+    {
+        $this->authorize('view', $project);
+
+        $filters = AnalyticsFilters::fromRequest($request, $project->id);
+
+        return response()->json($this->analytics->github($filters));
+    }
 }

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { fetchOverview, fetchTrends, fetchWorkflow } from '@/services/analyticsApi'
+import { fetchGitHubAnalytics, fetchOverview, fetchTrends, fetchWorkflow } from '@/services/analyticsApi'
 import { fetchInsight, fetchInsights, requestInsight } from '@/services/insightsApi'
 
 export const useAnalyticsStore = defineStore('analytics', {
@@ -7,6 +7,7 @@ export const useAnalyticsStore = defineStore('analytics', {
     overview: null,
     trends: null,
     workflow: null,
+    github: null,
     insights: [],
     insightsPagination: { current_page: 1, last_page: 1, total: 0 },
     loading: false,
@@ -30,15 +31,17 @@ export const useAnalyticsStore = defineStore('analytics', {
           end: this.filters.end,
         }
 
-        const [overview, trends, workflow] = await Promise.all([
+        const [overview, trends, workflow, github] = await Promise.all([
           fetchOverview(projectId, params),
           fetchTrends(projectId, { ...params, granularity: this.filters.granularity }),
           fetchWorkflow(projectId, params),
+          fetchGitHubAnalytics(projectId, params),
         ])
 
         this.overview = overview.data
         this.trends = trends.data
         this.workflow = workflow.data
+        this.github = github.data
       } finally {
         this.loading = false
       }

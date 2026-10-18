@@ -4,6 +4,9 @@ namespace App\Integrations\GitHub\Services;
 
 use App\Enums\GitHubLinkSource;
 use App\Integrations\GitHub\Clients\GitHubApiClient;
+use App\Integrations\GitHub\Events\GitHubPullRequestClosed;
+use App\Integrations\GitHub\Events\GitHubPullRequestMerged;
+use App\Integrations\GitHub\Events\GitHubPullRequestOpened;
 use App\Integrations\GitHub\Events\PullRequestSynced;
 use App\Models\GitHubPullRequest;
 use App\Models\GitHubRepository;
@@ -62,7 +65,32 @@ class GitHubPullRequestSyncService
 
         event(new PullRequestSynced($pr, $action ?? 'synchronize'));
 
+        $this->dispatchLifecycleEvent($pr, $action);
+
         return $pr;
+    }
+
+    /**
+     * Emit the granular PR domain events the automation engine reacts to.
+     * Only lifecycle transitions fire — routine syncs stay on PullRequestSynced.
+     */
+    protected function dispatchLifecycleEvent(GitHubPullRequest $pr, ?string $action): void
+    {
+        $linkedIssues = $pr->issueLinks()
+            ->with('issue')
+            ->get()
+            ->pluck('issue')
+            ->filter()
+            ->values()
+            ->all();
+
+        match ($action) {
+            'opened', 'reopened' => event(new GitHubPullRequestOpened($pr, $linkedIssues)),
+            'closed' => $pr->is_merged
+                ? event(new GitHubPullRequestMerged($pr, $linkedIssues))
+                : event(new GitHubPullRequestClosed($pr, $linkedIssues)),
+            default => null,
+        };
     }
 
     /**

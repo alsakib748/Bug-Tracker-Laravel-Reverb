@@ -22,6 +22,7 @@ class InsightContextBuilder
         $overview = $this->analytics->overview($filters);
         $workflow = $this->analytics->workflow($filters);
         $trends = $this->analytics->trends($filters, 'week');
+        $github = $this->analytics->github($filters);
 
         return [
             'project_id' => $filters->projectId,
@@ -37,10 +38,13 @@ class InsightContextBuilder
                 'priority_distribution' => $overview['priority_distribution'],
                 'workflow' => $workflow,
                 'trends_weekly' => $trends['series'],
+                'github' => $github,
             ],
             'data_quality' => [
                 'resolution_coverage' => $overview['resolution']['coverage'] ?? 'unknown',
                 'metric_definition_version' => $overview['metric_definition_version'] ?? null,
+                'github_data_available' => ($github['time_to_first_pr']['sample_size'] ?? 0) > 0
+                    || ($github['pr_throughput']['buckets'] ?? []) !== [],
             ],
         ];
     }

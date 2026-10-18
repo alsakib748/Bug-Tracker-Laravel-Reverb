@@ -13,6 +13,11 @@ enum AutomationTrigger: string
     case SPRINT_STARTED = 'sprint.started';
     case SPRINT_COMPLETED = 'sprint.completed';
     case PULL_REQUEST_SYNCED = 'pull_request.synced';
+    case GITHUB_PR_OPENED = 'github.pr_opened';
+    case GITHUB_PR_MERGED = 'github.pr_merged';
+    case GITHUB_PR_CLOSED = 'github.pr_closed';
+    case GITHUB_CHECKS_FAILED = 'github.checks_failed';
+    case GITHUB_COMMIT_PUSHED = 'github.commit_pushed';
 
     public function label(): string
     {
@@ -26,6 +31,11 @@ enum AutomationTrigger: string
             self::SPRINT_STARTED => 'Sprint started',
             self::SPRINT_COMPLETED => 'Sprint completed',
             self::PULL_REQUEST_SYNCED => 'Pull request synced',
+            self::GITHUB_PR_OPENED => 'GitHub pull request opened',
+            self::GITHUB_PR_MERGED => 'GitHub pull request merged',
+            self::GITHUB_PR_CLOSED => 'GitHub pull request closed',
+            self::GITHUB_CHECKS_FAILED => 'GitHub checks failed',
+            self::GITHUB_COMMIT_PUSHED => 'GitHub commit pushed',
         };
     }
 
@@ -45,7 +55,12 @@ enum AutomationTrigger: string
             self::COMMENT_CREATED => ['author', 'priority', 'status', 'labels'],
             self::SPRINT_STARTED => ['sprint_id'],
             self::SPRINT_COMPLETED => ['sprint_id'],
-            self::PULL_REQUEST_SYNCED => ['priority', 'status', 'assignee', 'type', 'labels', 'pr_state', 'pr_action'],
+            self::PULL_REQUEST_SYNCED => ['priority', 'status', 'assignee', 'type', 'labels', 'pr_state', 'pr_action', 'pr_author', 'repository'],
+            self::GITHUB_PR_OPENED,
+            self::GITHUB_PR_MERGED,
+            self::GITHUB_PR_CLOSED => ['priority', 'status', 'assignee', 'type', 'labels', 'pr_author', 'pr_target_branch', 'repository'],
+            self::GITHUB_CHECKS_FAILED => ['priority', 'status', 'assignee', 'type', 'labels', 'repository'],
+            self::GITHUB_COMMIT_PUSHED => ['priority', 'status', 'assignee', 'type', 'labels', 'commit_author', 'repository'],
         };
     }
 

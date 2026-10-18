@@ -49,6 +49,35 @@
           <StatCard label="Critical open" :value="store.overview.summary.critical_open_issues" tone="danger" />
         </div>
 
+        <!-- GitHub development velocity (facts only) -->
+        <ComponentCard title="GitHub development velocity"
+          desc="Computed from stored pull requests and commits. GitHub provides the facts; the AI only explains them.">
+          <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <StatCard label="Time to first PR"
+              :value="store.github?.time_to_first_pr?.median_hours ?? '—'"
+              :hint="`median hours · ${store.github?.time_to_first_pr?.sample_size ?? 0} issues`" />
+            <StatCard label="PRs awaiting review"
+              :value="store.github?.prs_awaiting_review?.count ?? 0"
+              :tone="(store.github?.prs_awaiting_review?.count ?? 0) > 3 ? 'danger' : 'default'"
+              :hint="`open for more than ${store.github?.prs_awaiting_review?.threshold_hours ?? 24} h`" />
+            <StatCard label="Median PR merge"
+              :value="store.github?.pr_merge_duration?.median_hours ?? '—'"
+              :hint="`median hours · ${store.github?.pr_merge_duration?.sample_size ?? 0} merged`" />
+            <StatCard label="Issues without PR"
+              :value="store.github?.issues_without_pr ?? 0"
+              hint="open issues not yet linked to a PR" />
+          </div>
+
+          <div v-if="store.github?.pr_throughput?.buckets?.length"
+            class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
+            <VueApexCharts type="bar" height="260" :options="githubChartOptions" :series="githubChartSeries" />
+          </div>
+          <p v-else class="mt-4 text-xs text-gray-500">No pull request activity in this period.</p>
+        </ComponentCard>
+
+        <!-- GitHub health AI insight -->
+        <GitHubInsightsPanel :project-id="projectId" />
+
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <!-- Resolution -->
           <ComponentCard title="Median resolution time">
@@ -244,6 +273,7 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import StatCard from '@/components/analytics/StatCard.vue'
+import GitHubInsightsPanel from '@/components/insights/GitHubInsightsPanel.vue'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import VueApexCharts from 'vue3-apexcharts'
@@ -269,6 +299,7 @@ const insightTypes = [
   { label: 'Trend analysis', value: 'trend_analysis' },
   { label: 'Bottleneck analysis', value: 'bottleneck' },
   { label: 'Sprint review', value: 'sprint_review' },
+  { label: 'GitHub health', value: 'github_health' },
 ]
 
 const chartOptions = computed(() => ({
@@ -283,6 +314,21 @@ const chartOptions = computed(() => ({
 const chartSeries = computed(() => [
   { name: 'Created', data: store.trends?.series?.created || [] },
   { name: 'Resolved', data: store.trends?.series?.resolved || [] },
+])
+
+const githubChartOptions = computed(() => ({
+  chart: { toolbar: { show: false }, fontFamily: 'inherit' },
+  colors: ['#465fff', '#12b76a'],
+  plotOptions: { bar: { borderRadius: 4, columnWidth: '55%' } },
+  dataLabels: { enabled: false },
+  xaxis: { categories: store.github?.pr_throughput?.buckets || [] },
+  legend: { position: 'top' },
+  title: { text: 'PR throughput (opened vs merged)', style: { fontSize: '13px', fontWeight: 600 } },
+}))
+
+const githubChartSeries = computed(() => [
+  { name: 'Opened', data: store.github?.pr_throughput?.opened || [] },
+  { name: 'Merged', data: store.github?.pr_throughput?.merged || [] },
 ])
 
 const toIsoDate = (value) => {

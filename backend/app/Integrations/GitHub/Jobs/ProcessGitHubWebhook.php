@@ -3,6 +3,8 @@
 namespace App\Integrations\GitHub\Jobs;
 
 use App\Enums\GitHubLinkSource;
+use App\Integrations\GitHub\Events\GitHubChecksFailed;
+use App\Integrations\GitHub\Events\GitHubCommitPushed;
 use App\Integrations\GitHub\Services\GitHubInstallationService;
 use App\Integrations\GitHub\Services\GitHubLinkingService;
 use App\Integrations\GitHub\Services\GitHubPullRequestSyncService;
@@ -63,7 +65,7 @@ class ProcessGitHubWebhook implements ShouldQueue
                 'push' => $this->handlePush($delivery, $payload, $linking),
                 'installation' => $this->handleInstallation($delivery, $payload, $installations),
                 'installation_repositories' => $this->handleInstallationRepositories($delivery, $payload, $installations),
-                'check_suite', 'check_run' => $this->handleChecks($delivery, $payload),
+                'check_suite', 'check_run' => $this->handleChecks($delivery, $payload, $linking),
                 default => 'ignored',
             };
 
@@ -147,6 +149,9 @@ class ProcessGitHubWebhook implements ShouldQueue
             return 'ignored';
         }
 
+        $normalized = [];
+        $linkedIssues = [];
+
         foreach ($commits as $commit) {
             if (! isset($commit['id'], $commit['message'])) {
                 continue;
@@ -175,6 +180,21 @@ class ProcessGitHubWebhook implements ShouldQueue
                     'html_url' => $record->html_url,
                 ], $repository->id, null, GitHubLinkSource::COMMIT_MESSAGE);
             }
+
+            $normalized[] = [
+                'sha' => (string) $commit['id'],
+                'message' => (string) $commit['message'],
+                'author' => $commit['author']['name'] ?? null,
+                'url' => $commit['url'] ?? null,
+            ];
+
+            foreach ($issues as $issue) {
+                $linkedIssues[$issue->id] = $issue;
+            }
+        }
+
+        if ($normalized !== []) {
+            event(new GitHubCommitPushed($repository, $normalized, array_values($linkedIssues)));
         }
 
         return 'processed';
@@ -221,6 +241,7 @@ class ProcessGitHubWebhook implements ShouldQueue
     protected function handleChecks(
         GitHubWebhookDelivery $delivery,
         array $payload,
+        GitHubLinkingService $linking,
     ): string {
         $repositoryId = $payload['repository']['id'] ?? null;
         $repository = $repositoryId
@@ -259,9 +280,33 @@ class ProcessGitHubWebhook implements ShouldQueue
                     'completed_at' => $this->parseTime($checkRun['completed_at'] ?? null),
                 ]
             );
+
+            if ($repository && $this->checkFailed($checkRun)) {
+                event(new GitHubChecksFailed(
+                    $repository,
+                    [
+                        'name' => $checkRun['name'] ?? 'check',
+                        'head_sha' => $checkRun['head_sha'],
+                        'conclusion' => $checkRun['conclusion'] ?? null,
+                        'html_url' => $checkRun['html_url'] ?? $checkRun['details_url'] ?? null,
+                    ],
+                    $linking->issuesForHeadSha($repository, (string) $checkRun['head_sha'])->all(),
+                ));
+            }
         }
 
         return 'processed';
+    }
+
+    /**
+     * @param  array<string, mixed>  $checkRun
+     */
+    protected function checkFailed(array $checkRun): bool
+    {
+        return ($checkRun['status'] ?? 'completed') === 'completed'
+            && in_array($checkRun['conclusion'] ?? null, [
+                'failure', 'timed_out', 'cancelled', 'action_required', 'stale', 'startup_failure',
+            ], true);
     }
 
     protected function parseTime(?string $time): ?\DateTimeInterface

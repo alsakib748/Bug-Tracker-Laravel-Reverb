@@ -8,3 +8,6 @@ export const fetchTrends = (projectId, params = {}) =>
 
 export const fetchWorkflow = (projectId, params = {}) =>
   api.get(`/projects/${projectId}/analytics/workflow`, { params })
+
+export const fetchGitHubAnalytics = (projectId, params = {}) =>
+  api.get(`/projects/${projectId}/analytics/github`, { params })

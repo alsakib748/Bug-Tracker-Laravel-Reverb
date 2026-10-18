@@ -73,6 +73,10 @@ class AutomationRegistry
             'pr_action' => ['type' => 'enum', 'options' => [
                 'opened', 'closed', 'reopened', 'synchronize', 'edited', 'backfill',
             ]],
+            'pr_author' => ['type' => 'text'],
+            'pr_target_branch' => ['type' => 'text'],
+            'commit_author' => ['type' => 'text'],
+            'repository' => ['type' => 'text'],
         ];
     }
 

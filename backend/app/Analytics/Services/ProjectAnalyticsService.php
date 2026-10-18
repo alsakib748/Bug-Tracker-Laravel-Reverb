@@ -3,6 +3,7 @@
 namespace App\Analytics\Services;
 
 use App\Analytics\DTOs\AnalyticsFilters;
+use App\Analytics\Queries\GitHubAnalyticsQuery;
 use App\Analytics\Queries\IssueMetricsQuery;
 use App\Analytics\Queries\ResolutionMetricsQuery;
 use App\Analytics\Queries\WorkflowMetricsQuery;
@@ -15,6 +16,7 @@ class ProjectAnalyticsService
         private readonly IssueMetricsQuery $issues,
         private readonly ResolutionMetricsQuery $resolutions,
         private readonly WorkflowMetricsQuery $workflow,
+        private readonly GitHubAnalyticsQuery $github,
     ) {}
 
     /**
@@ -80,6 +82,32 @@ class ProjectAnalyticsService
                 ],
                 'time_in_status' => $this->workflow->timeInStatus($filters),
                 'reopened_count' => $this->workflow->reopenedCount($filters),
+            ];
+        });
+    }
+
+    /**
+     * GitHub development-velocity metrics (derived from stored PR/commit facts).
+     *
+     * @return array<string, mixed>
+     */
+    public function github(AnalyticsFilters $filters): array
+    {
+        $cacheKey = $filters->cacheKey().':github:'.MetricDefinitions::version();
+
+        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($filters) {
+            return [
+                'period' => [
+                    'start' => $filters->periodStart->toDateString(),
+                    'end' => $filters->periodEnd->toDateString(),
+                    'timezone' => $filters->timezone,
+                ],
+                'time_to_first_pr' => $this->github->timeToFirstPR($filters),
+                'prs_awaiting_review' => $this->github->prsAwaitingReview($filters),
+                'pr_throughput' => $this->github->prThroughput($filters),
+                'pr_merge_duration' => $this->github->prMergeDuration($filters),
+                'issues_without_pr' => $this->github->issuesWithoutPR($filters),
+                'metric_definition_version' => MetricDefinitions::version(),
             ];
         });
     }

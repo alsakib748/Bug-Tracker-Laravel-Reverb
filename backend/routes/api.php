@@ -213,6 +213,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/analytics/overview', [ProjectAnalyticsController::class, 'overview']);
         Route::get('/analytics/trends', [ProjectAnalyticsController::class, 'trends']);
         Route::get('/analytics/workflow', [ProjectAnalyticsController::class, 'workflow']);
+        Route::get('/analytics/github', [ProjectAnalyticsController::class, 'github']);
 
         Route::get('/insights', [ProjectInsightsController::class, 'index']);
         Route::post('/insights', [ProjectInsightsController::class, 'store']);

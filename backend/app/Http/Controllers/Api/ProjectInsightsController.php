@@ -30,7 +30,7 @@ class ProjectInsightsController extends Controller
         $this->authorize('view', $project);
 
         $validated = $request->validate([
-            'insight_type' => 'required|in:project_summary,trend_analysis,bottleneck,sprint_review',
+            'insight_type' => 'required|in:project_summary,trend_analysis,bottleneck,sprint_review,github_health',
             'start' => 'nullable|date',
             'end' => 'nullable|date|after_or_equal:start',
             'timezone' => 'nullable|timezone',
