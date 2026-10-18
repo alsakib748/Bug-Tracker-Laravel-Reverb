@@ -121,8 +121,19 @@ class GitHubLinkingService
             );
         }
 
-        // CODE-12 references — project code + issue id.
+        // KEY-12 references (e.g. ISS-42, BUG-123) — matched against the
+        // issue_key column, scoped to the linked projects.
         preg_match_all('/\b([A-Za-z][A-Za-z0-9]{1,9})-(\d{1,7})\b/', $text, $keyMatches);
+        $keys = array_values(array_unique(array_map('strtoupper', $keyMatches[0] ?? [])));
+
+        if ($keys !== []) {
+            $queries->push(
+                Issue::whereIn('project_id', $projects->pluck('id'))->whereIn('issue_key', $keys)
+            );
+        }
+
+        // CODE-12 references — project code + issue id (fallback when an issue
+        // has no matching issue_key, e.g. "AUR-105").
         $codeToProject = $projects->keyBy(fn ($project) => strtoupper($project->code));
         $pairs = [];
 

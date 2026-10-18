@@ -17,6 +17,7 @@ class IssueResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'issue_key' => $this->issue_key,
             'title' => $this->title,
             'description' => $this->description,
             'priority' => $this->priority?->value,

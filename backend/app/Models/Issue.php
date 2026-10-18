@@ -24,6 +24,7 @@ class Issue extends Model
         'sprint_id',
         'reporter_id',
         'assigned_to',
+        'issue_key',
         'title',
         'description',
         'priority',
@@ -53,6 +54,15 @@ class Issue extends Model
         'severity' => Severity::class,
         'type' => IssueType::class,
     ];
+
+    protected static function booted(): void
+    {
+        static::created(function (Issue $issue): void {
+            if (blank($issue->issue_key)) {
+                $issue->forceFill(['issue_key' => 'ISS-' . $issue->id])->saveQuietly();
+            }
+        });
+    }
 
     public function project()
     {

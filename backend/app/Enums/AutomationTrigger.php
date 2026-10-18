@@ -12,6 +12,7 @@ enum AutomationTrigger: string
     case COMMENT_CREATED = 'comment.created';
     case SPRINT_STARTED = 'sprint.started';
     case SPRINT_COMPLETED = 'sprint.completed';
+    case PULL_REQUEST_SYNCED = 'pull_request.synced';
 
     public function label(): string
     {
@@ -24,6 +25,7 @@ enum AutomationTrigger: string
             self::COMMENT_CREATED => 'Comment created',
             self::SPRINT_STARTED => 'Sprint started',
             self::SPRINT_COMPLETED => 'Sprint completed',
+            self::PULL_REQUEST_SYNCED => 'Pull request synced',
         };
     }
 
@@ -43,6 +45,7 @@ enum AutomationTrigger: string
             self::COMMENT_CREATED => ['author', 'priority', 'status', 'labels'],
             self::SPRINT_STARTED => ['sprint_id'],
             self::SPRINT_COMPLETED => ['sprint_id'],
+            self::PULL_REQUEST_SYNCED => ['priority', 'status', 'assignee', 'type', 'labels', 'pr_state', 'pr_action'],
         };
     }
 

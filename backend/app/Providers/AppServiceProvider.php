@@ -8,6 +8,7 @@ use App\Events\IssueCreated;
 use App\Events\IssueLabelsUpdated;
 use App\Events\IssueStatusChanged;
 use App\Events\IssueUpdated;
+use App\Integrations\GitHub\Events\PullRequestSynced;
 use App\Listeners\Automation\DiscoverAutomationRules;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -34,5 +35,6 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(IssueAssigned::class, DiscoverAutomationRules::class);
         Event::listen(IssueLabelsUpdated::class, DiscoverAutomationRules::class);
         Event::listen(CommentCreated::class, DiscoverAutomationRules::class);
+        Event::listen(PullRequestSynced::class, DiscoverAutomationRules::class);
     }
 }

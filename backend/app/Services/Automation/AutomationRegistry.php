@@ -69,6 +69,10 @@ class AutomationRegistry
             'from_assignee' => ['type' => 'user'],
             'due_date' => ['type' => 'date'],
             'sprint_id' => ['type' => 'number'],
+            'pr_state' => ['type' => 'enum', 'options' => ['open', 'closed', 'merged']],
+            'pr_action' => ['type' => 'enum', 'options' => [
+                'opened', 'closed', 'reopened', 'synchronize', 'edited', 'backfill',
+            ]],
         ];
     }
 

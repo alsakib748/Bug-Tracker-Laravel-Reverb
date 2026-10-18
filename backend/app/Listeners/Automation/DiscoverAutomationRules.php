@@ -9,6 +9,7 @@ use App\Events\IssueCreated;
 use App\Events\IssueLabelsUpdated;
 use App\Events\IssueStatusChanged;
 use App\Events\IssueUpdated;
+use App\Integrations\GitHub\Events\PullRequestSynced;
 use App\Jobs\Automation\EvaluateAutomationRule;
 use App\Models\AutomationRule;
 use App\Models\Issue;
@@ -25,6 +26,13 @@ class DiscoverAutomationRules
 
     public function handle(object $event): void
     {
+        // A PR can be linked to several issues; evaluate each one.
+        if ($event instanceof PullRequestSynced) {
+            $this->handlePullRequestSynced($event);
+
+            return;
+        }
+
         $trigger = $this->resolveTrigger($event);
 
         if (! $trigger) {
@@ -37,6 +45,39 @@ class DiscoverAutomationRules
             return;
         }
 
+        $this->evaluateForIssue($trigger, $issue, $this->buildContext($event, $trigger, $issue));
+    }
+
+    /**
+     * Run PR-synced rules once per issue linked to the pull request.
+     */
+    protected function handlePullRequestSynced(PullRequestSynced $event): void
+    {
+        $links = $event->pullRequest->issueLinks()->with('issue')->get();
+
+        foreach ($links as $link) {
+            if (! $link->issue) {
+                continue;
+            }
+
+            $issue = $link->issue;
+
+            $this->evaluateForIssue(
+                AutomationTrigger::PULL_REQUEST_SYNCED,
+                $issue,
+                $this->buildContext($event, AutomationTrigger::PULL_REQUEST_SYNCED, $issue),
+            );
+        }
+    }
+
+    /**
+     * Queue one evaluation per enabled rule matching the trigger in the issue's
+     * project.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    protected function evaluateForIssue(AutomationTrigger $trigger, Issue $issue, array $context): void
+    {
         $rules = AutomationRule::query()
             ->where('project_id', $issue->project_id)
             ->where('trigger_type', $trigger->value)
@@ -46,8 +87,6 @@ class DiscoverAutomationRules
         if ($rules->isEmpty()) {
             return;
         }
-
-        $context = $this->buildContext($event, $trigger, $issue);
 
         // Changes caused by automation should not re-trigger automation unless
         // a rule explicitly opts in — this is the primary loop safeguard.
@@ -137,6 +176,22 @@ class DiscoverAutomationRules
 
         if ($event instanceof CommentCreated) {
             $context['author'] = $event->comment->user_id;
+        }
+
+        if ($event instanceof PullRequestSynced) {
+            $pr = $event->pullRequest;
+
+            $context['pr_state'] = $pr->is_merged ? 'merged' : $pr->state;
+            $context['pr_action'] = $event->action;
+            $context['pull_request'] = [
+                'number' => $pr->number,
+                'title' => $pr->title,
+                'url' => $pr->html_url,
+                'state' => $pr->state,
+                'is_merged' => $pr->is_merged,
+                'draft' => $pr->draft,
+                'head_ref' => $pr->head_ref,
+            ];
         }
 
         return $context;
