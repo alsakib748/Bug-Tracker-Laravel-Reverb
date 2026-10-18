@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Events\CommentCreated;
+use App\Events\CommentDeleted;
+use App\Events\CommentUpdated;
 use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\User;
@@ -75,6 +77,9 @@ class CommentService
         $oldContent = $comment->comment;
         $comment->comment = $content;
         $comment->save();
+
+        event(new CommentUpdated($comment->fresh('user'), auth()->id()));
+
         $this->activityLogService->logCommentUpdated($comment->issue, auth()->user(), $oldContent, $content);
 
         return $comment->fresh('user');
@@ -84,7 +89,11 @@ class CommentService
     {
         $content = $comment->comment;
         $issue = $comment->issue;
+        $commentId = $comment->id;
         $comment->delete();
+
+        event(new CommentDeleted($commentId, $issue->id, auth()->id()));
+
         $this->activityLogService->logCommentDeleted($issue, auth()->user(), $content);
     }
 }

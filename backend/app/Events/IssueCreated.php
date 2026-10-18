@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Http\Resources\IssueResource;
 use App\Models\Issue;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -47,18 +48,10 @@ class IssueCreated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        // return [
-        //     'id' => $this->issue->id,
-        //     'title' => $this->issue->title,
-        //     'status' => $this->issue->status,
-        //     'priority' => $this->issue->priority,
-        //     'project_id' => $this->issue->project_id,
-        //     'reporter_id' => $this->issue->reporter_id,
-        //     'assigned_to' => $this->issue->assigned_to,
-        //     'created_at' => $this->issue->created_at->toISOString(),
-        // ];
+        // Mirror the REST payload so clients can reuse the same rendering code
+        // and never receive internal attributes.
         return [
-            'issue' => $this->issue->toArray(),
+            'issue' => (new IssueResource($this->issue))->resolve(),
         ];
     }
 }

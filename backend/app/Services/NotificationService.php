@@ -8,9 +8,31 @@ use App\Models\Issue;
 use App\Models\Project;
 use App\Models\User;
 use App\Notifications\SystemNotification;
+use Illuminate\Support\Str;
 
 class NotificationService
 {
+    /**
+     * Persist a database notification and broadcast it.
+     *
+     * The row is created explicitly (instead of notify() + refetch) so the
+     * broadcast always carries the exact record that was just written, even
+     * under concurrent writes for the same recipient.
+     */
+    private function notifyUser(User $recipient, string $type, array $data): void
+    {
+        $notification = new SystemNotification($type, $data);
+
+        $record = $recipient->notifications()->create([
+            'id' => (string) Str::uuid(),
+            'type' => SystemNotification::class,
+            'data' => $notification->toDatabase($recipient),
+            'read_at' => null,
+        ]);
+
+        event(new NotificationCreated($record));
+    }
+
     private function notifyProjectMembers(Project $project, string $type, array $data, ?int $excludeUserId = null): void
     {
         $project->members()
@@ -24,19 +46,7 @@ class NotificationService
                     return;
                 }
 
-                $recipient->notify(
-                    new SystemNotification($type, $data)
-                );
-
-                $notification = $recipient->notifications()
-                    ->latest('created_at')
-                    ->first();
-
-                if ($notification) {
-                    event(
-                        new NotificationCreated($notification)
-                    );
-                }
+                $this->notifyUser($recipient, $type, $data);
             });
 
     }
@@ -142,15 +152,7 @@ class NotificationService
             'url' => '/projects/' . $project->id,
         ];
 
-        $member->notify(new SystemNotification('project_member_added', $data));
-
-        $notification = $member->notifications()
-            ->latest('created_at')
-            ->first();
-
-        if ($notification) {
-            event(new NotificationCreated($notification));
-        }
+        $this->notifyUser($member, 'project_member_added', $data);
 
     }
 

@@ -43,6 +43,7 @@ import { useIssueLinks } from '@/composables/useIssueLinks';
 import { useGitHubLinks } from '@/composables/useGitHubLinks';
 
 import echo from '@/services/echo';
+import { onRealtimeReconnect, debounce } from '@/services/realtime';
 import { applyBugReportSuggestions } from '@/services/aiBugReportApi';
 
 const issue = ref(null);
@@ -478,7 +479,49 @@ const subscribeToIssueChannel = () => {
         item => item.id !== event.attachment_id
       )
     })
+
+    // Issue edited fields
+    .listen('.issue.updated', (event) => {
+      if (event.issue && issue.value?.id === event.issue.id) {
+        issue.value = { ...issue.value, ...event.issue }
+      }
+    })
+
+    // Issue assignment
+    .listen('.issue.assigned', (event) => {
+      if (issue.value?.id === event.issue_id) {
+        issue.value.assigned_to = event.assigned_to
+      }
+    })
+
+    // Comment edited
+    .listen('.comment.updated', (event) => {
+      const updated = event.comment
+      if (!updated) return
+      const index = comments.value.findIndex((c) => c.id === updated.id)
+      if (index !== -1) comments.value.splice(index, 1, updated)
+    })
+
+    // Comment removed
+    .listen('.comment.deleted', (event) => {
+      comments.value = comments.value.filter((c) => c.id !== event.comment_id)
+    })
 }
+
+// After a socket reconnect, refetch everything the detail view renders so no
+// updates published while offline are missed.
+const reloadFromRealtime = debounce(async () => {
+  if (!issue.value?.id) return
+  await loadComments()
+  await loadAttachments()
+  await loadHistory()
+  await loadAllowedTransitions()
+  await loadIssueLabels()
+  await loadWatchers()
+  await loadLinks()
+}, 600)
+
+let removeReconnectListener = null
 
 onMounted(async () => {
 
@@ -532,9 +575,13 @@ onMounted(async () => {
 
   subscribeToIssueChannel()
 
+  removeReconnectListener = onRealtimeReconnect(reloadFromRealtime)
+
 });
 
 onUnmounted(() => {
+
+  if (removeReconnectListener) removeReconnectListener()
 
   if (!issue.value) {
     return
@@ -543,12 +590,6 @@ onUnmounted(() => {
   const issueId = issue.value.id
 
   echo.leave(`issue.${issueId}`)
-
-  issueStore.stopListeningToIssue(issueId)
-
-  commentStore.stopListeners?.(issueId)
-
-  attachmentStore.stopListeners?.(issueId)
 })
 
 

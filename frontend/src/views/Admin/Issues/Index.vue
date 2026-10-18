@@ -89,9 +89,11 @@ import AdminLayout from '@/components/layout/AdminLayout.vue';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
 import ComponentCard from '@/components/common/ComponentCard.vue';
 
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, reactive } from 'vue';
 import { useIssueStore } from '@/stores/issues';
 import { useProjectStore } from '@/stores/projects';
+import echo from '@/services/echo';
+import { onRealtimeReconnect, debounce } from '@/services/realtime';
 
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -141,6 +143,39 @@ const priorityOptions = [
   { label: 'Critical', value: 'critical' },
 ];
 
+let lastParams = {};
+
+const subscribedProjects = new Set();
+
+const refreshFromRealtime = debounce(() => {
+  fetchIssues(lastParams);
+});
+
+// The issue list is project-scoped on the backend, so we mirror the realtime
+// events for every project currently visible on the page.
+const syncProjectSubscriptions = () => {
+  const ids = new Set(
+    issues.value.map((issue) => issue.project?.id).filter(Boolean)
+  );
+
+  ids.forEach((id) => {
+    if (subscribedProjects.has(id)) return;
+    subscribedProjects.add(id);
+    echo
+      .private(`project.${id}`)
+      .listen('.issue.created', refreshFromRealtime)
+      .listen('.issue.updated', refreshFromRealtime)
+      .listen('.issue.deleted', refreshFromRealtime);
+  });
+
+  Array.from(subscribedProjects).forEach((id) => {
+    if (!ids.has(id)) {
+      echo.leave(`project.${id}`);
+      subscribedProjects.delete(id);
+    }
+  });
+};
+
 const fetchIssues = async (params = {}) => {
   loading.value = true;
   try {
@@ -150,9 +185,11 @@ const fetchIssues = async (params = {}) => {
       sort: '-id',
     };
     const merged = { ...defaultParams, ...params };
+    lastParams = merged;
     const response = await issueStore.fetchIssues(merged);
     issues.value = issueStore.issues;
     pagination.value = issueStore.pagination;
+    syncProjectSubscriptions();
 
     // console.log('Issues from store: ', issues.value);
   } catch (error) {
@@ -221,9 +258,18 @@ const confirmDelete = async (issue) => {
   }
 }
 
+let removeReconnectListener = null;
+
 onMounted(() => {
   loadProjects();
   fetchIssues();
+  removeReconnectListener = onRealtimeReconnect(refreshFromRealtime);
+});
+
+onUnmounted(() => {
+  if (removeReconnectListener) removeReconnectListener();
+  subscribedProjects.forEach((id) => echo.leave(`project.${id}`));
+  subscribedProjects.clear();
 });
 
 </script>

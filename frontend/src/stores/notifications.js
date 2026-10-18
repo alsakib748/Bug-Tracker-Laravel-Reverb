@@ -1,7 +1,10 @@
 import { defineStore } from 'pinia'
 import api, { getCsrfToken } from '@/services/api'
 import echo from '@/services/echo'
+import { onRealtimeReconnect } from '@/services/realtime'
 import { useAuthStore } from './auth'
+
+let removeReconnectListener = null
 
 export const useNotificationStore = defineStore('notifications', {
   state: () => ({
@@ -107,6 +110,10 @@ export const useNotificationStore = defineStore('notifications', {
             this.notifications.unshift(notification)
           })
 
+        removeReconnectListener = onRealtimeReconnect(() => {
+          this.fetchNotifications().catch(() => {})
+        })
+
         this.listenersInitialized = true
       } catch (error) {
         console.error('Failed to initialize notification listeners:', error)
@@ -116,6 +123,10 @@ export const useNotificationStore = defineStore('notifications', {
     stopListeners() {
       if (!this.listenersInitialized) return
       try {
+        if (removeReconnectListener) {
+          removeReconnectListener()
+          removeReconnectListener = null
+        }
         const auth = useAuthStore()
         if (auth.user?.id) {
           echo.leave(`user.${auth.user.id}`)

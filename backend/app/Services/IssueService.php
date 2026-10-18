@@ -8,6 +8,7 @@ use App\Enums\Priority;
 use App\Enums\Severity;
 use App\Events\IssueAssigned;
 use App\Events\IssueCreated;
+use App\Events\IssueDeleted;
 use App\Events\IssueUpdated;
 use App\Models\Issue;
 use App\Models\User;
@@ -149,7 +150,12 @@ class IssueService
 
     public function deleteIssue(Issue $issue): void
     {
+        $issueId = $issue->id;
+        $projectId = $issue->project_id;
+
         $issue->delete();
+
+        event(new IssueDeleted($issueId, $projectId, (string) Str::uuid(), auth()->id()));
     }
 
     // -------------------- Business Actions -------------------

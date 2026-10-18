@@ -20,8 +20,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, onUnmounted, reactive } from 'vue';
 import { useActivityLogStore } from '@/stores/activityLogs';
+import echo from '@/services/echo';
+import { onRealtimeReconnect, debounce } from '@/services/realtime';
 import AdminLayout from '@/components/layout/AdminLayout.vue';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
 import ComponentCard from '@/components/common/ComponentCard.vue';
@@ -36,12 +38,38 @@ const loading = ref(false);
 const pagination = ref(store.pagination);
 const filters = reactive({});
 
+const subscribedProjects = new Set();
+
+const refreshFromRealtime = debounce(() => {
+  loadLogs(filters);
+});
+
+const syncProjectSubscriptions = () => {
+  const ids = new Set(
+    logs.value.map((log) => log.project?.id).filter(Boolean)
+  );
+
+  ids.forEach((id) => {
+    if (subscribedProjects.has(id)) return;
+    subscribedProjects.add(id);
+    echo.private(`project.${id}`).listen('.activity.logged', refreshFromRealtime);
+  });
+
+  Array.from(subscribedProjects).forEach((id) => {
+    if (!ids.has(id)) {
+      echo.leave(`project.${id}`);
+      subscribedProjects.delete(id);
+    }
+  });
+};
+
 const loadLogs = async (params = {}) => {
   loading.value = true;
   try {
     await store.fetchLogs(params);
     logs.value = store.logs;
     pagination.value = store.pagination;
+    syncProjectSubscriptions();
   } catch (error) {
     console.error('Error loading logs:', error);
   } finally {
@@ -59,7 +87,16 @@ const onPageChange = (event) => {
   loadLogs({ ...filters, page });
 };
 
+let removeReconnectListener = null;
+
 onMounted(() => {
   loadLogs();
+  removeReconnectListener = onRealtimeReconnect(refreshFromRealtime);
+});
+
+onUnmounted(() => {
+  if (removeReconnectListener) removeReconnectListener();
+  subscribedProjects.forEach((id) => echo.leave(`project.${id}`));
+  subscribedProjects.clear();
 });
 </script>

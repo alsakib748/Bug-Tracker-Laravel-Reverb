@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Http\Resources\IssueResource;
 use App\Models\Issue;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -40,8 +41,13 @@ class IssueUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
+            // Detail view listens on the issue channel; lists and boards listen
+            // on the project channel so they also observe edits.
             new PrivateChannel(
                 'issue.'.$this->issue->id
+            ),
+            new PrivateChannel(
+                'project.'.$this->issue->project_id
             ),
         ];
     }
@@ -53,18 +59,8 @@ class IssueUpdated implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
-        // return [
-        //     'id' => $this->issue->id,
-        //     'title' => $this->issue->title,
-        //     'status' => $this->issue->status,
-        //     'priority' => $this->issue->priority,
-        //     'assignee' => $this->issue->assignee?->name,
-        //     'updated_at' => $this->issue->updated_at->toISOString(),
-        // ];
-
         return [
-            'issue' => $this->issue->toArray(),
+            'issue' => (new IssueResource($this->issue))->resolve(),
         ];
-
     }
 }

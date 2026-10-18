@@ -108,6 +108,7 @@ import { useSprintStore } from '@/stores/sprints'
 import { useProjectStore } from '@/stores/projects'
 import { usePermissions } from '@/composables/usePermissions'
 import echo from '@/services/echo'
+import { onRealtimeReconnect, debounce } from '@/services/realtime'
 
 const router = useRouter()
 const boardStore = useBoardStore()
@@ -132,6 +133,13 @@ const sprintOptions = computed(() => [
 ])
 
 let subscribedProjectId = null
+let removeReconnectListener = null
+
+const reloadFromRealtime = debounce(() => {
+  if (!projectId.value) return
+  boardStore.loadBoard(projectId.value, sprintFilter.value)
+  sprintStore.loadSprints(projectId.value)
+})
 
 const subscribeToProject = (id) => {
   if (subscribedProjectId && subscribedProjectId !== id) {
@@ -140,9 +148,12 @@ const subscribeToProject = (id) => {
   if (!id) return
 
   subscribedProjectId = id
-  echo.private(`project.${id}`).listen('.issue.board.updated', () => {
-    boardStore.loadBoard(id, sprintFilter.value)
-  })
+  echo
+    .private(`project.${id}`)
+    .listen('.issue.board.updated', reloadFromRealtime)
+    .listen('.issue.created', reloadFromRealtime)
+    .listen('.issue.updated', reloadFromRealtime)
+    .listen('.issue.deleted', reloadFromRealtime)
 }
 
 const onProjectChange = async (event) => {
@@ -243,6 +254,7 @@ const onSprintCompleted = async ({ carry_over, target_sprint_id }) => {
 }
 
 onMounted(async () => {
+  removeReconnectListener = onRealtimeReconnect(reloadFromRealtime)
   await projectStore.fetchAllProjects()
   if (projects.value.length) {
     projectId.value = projects.value[0].id
@@ -253,6 +265,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  if (removeReconnectListener) removeReconnectListener()
   if (subscribedProjectId) echo.leave(`project.${subscribedProjectId}`)
 })
 </script>

@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Http\Resources\ActivityLogResource;
 use App\Models\ActivityLog;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -44,8 +45,9 @@ class ActivityLogged implements ShouldBroadcast
 
     public function broadcastWith(): array
     {
+        // Resource form drops ip / user_agent that the raw model would expose.
         return [
-            'activity' => $this->activity->toArray(),
+            'activity' => (new ActivityLogResource($this->activity))->resolve(),
         ];
     }
 }

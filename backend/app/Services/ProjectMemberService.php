@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\ProjectMemberAdded;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\NotificationService;
@@ -49,6 +50,15 @@ class ProjectMemberService
             'role' => $role,
             'joined_at' => now(),
         ]);
+
+        event(new ProjectMemberAdded(
+            $project->id,
+            $project->name,
+            $newMember->id,
+            $newMember->name,
+            $role,
+            auth()->id(),
+        ));
 
         $this->activityLogService->logMemberAdded($project, auth()->user(), $newMember);
 

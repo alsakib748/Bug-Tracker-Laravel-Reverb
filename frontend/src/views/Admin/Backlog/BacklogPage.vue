@@ -122,7 +122,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import Swal from 'sweetalert2'
 import draggable from 'vuedraggable'
@@ -138,6 +138,8 @@ import { useProjectStore } from '@/stores/projects'
 import { useSprintStore } from '@/stores/sprints'
 import { usePermissions } from '@/composables/usePermissions'
 import { fetchBacklog, reorderBacklogIssue } from '@/services/backlogApi'
+import echo from '@/services/echo'
+import { onRealtimeReconnect, debounce } from '@/services/realtime'
 
 const projectStore = useProjectStore()
 const sprintStore = useSprintStore()
@@ -181,9 +183,32 @@ const loadBacklog = async () => {
   }
 }
 
+let subscribedProjectId = null
+
+const refreshFromRealtime = debounce(() => {
+  loadBacklog()
+  if (projectId.value) sprintStore.loadSprints(projectId.value)
+})
+
+const subscribeToProject = (id) => {
+  if (subscribedProjectId && subscribedProjectId !== id) {
+    echo.leave(`project.${subscribedProjectId}`)
+  }
+  if (!id) return
+
+  subscribedProjectId = id
+  echo
+    .private(`project.${id}`)
+    .listen('.issue.created', refreshFromRealtime)
+    .listen('.issue.updated', refreshFromRealtime)
+    .listen('.issue.deleted', refreshFromRealtime)
+    .listen('.issue.board.updated', refreshFromRealtime)
+}
+
 const onProjectChange = async (event) => {
   projectId.value = event.value
   selectedSprints.value = {}
+  subscribeToProject(projectId.value)
   await sprintStore.loadSprints(projectId.value)
   await loadBacklog()
 }
@@ -220,12 +245,21 @@ const onSprintSaved = async (payload) => {
   }
 }
 
+let removeReconnectListener = null
+
 onMounted(async () => {
+  removeReconnectListener = onRealtimeReconnect(refreshFromRealtime)
   await projectStore.fetchAllProjects()
   if (projects.value.length) {
     projectId.value = projects.value[0].id
+    subscribeToProject(projectId.value)
     await sprintStore.loadSprints(projectId.value)
     await loadBacklog()
   }
+})
+
+onUnmounted(() => {
+  if (removeReconnectListener) removeReconnectListener()
+  if (subscribedProjectId) echo.leave(`project.${subscribedProjectId}`)
 })
 </script>
