@@ -38,7 +38,18 @@
           <div>
             <label class="block text-sm font-medium text-gray-700">Role *</label>
             <Select v-model="form.role" :options="roleOptions" optionLabel="label" optionValue="value"
-              placeholder="Select role" class="w-full mt-1" :class="{ 'p-invalid': errors.role }" />
+              :loading="rolesLoading" placeholder="Select role" class="w-full mt-1"
+              :class="{ 'p-invalid': errors.role }">
+              <template #option="{ option }">
+                <div class="flex items-center justify-between gap-4">
+                  <span>{{ option.label }}</span>
+                  <span v-if="option.isProtected" class="text-xs text-gray-400">Full access</span>
+                  <span v-else-if="option.permissionsCount !== null" class="text-xs text-gray-400">
+                    {{ option.permissionsCount }} permissions
+                  </span>
+                </div>
+              </template>
+            </Select>
             <small v-if="errors.role" class="text-red-500">{{ errors.role }}</small>
           </div>
 
@@ -62,9 +73,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/users';
+import { useRoleOptions } from '@/composables/useRoleOptions';
 import AdminLayout from '@/components/layout/AdminLayout.vue';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
 import ComponentCard from '@/components/common/ComponentCard.vue';
@@ -89,14 +101,7 @@ const form = reactive({
 
 const errors = reactive({});
 
-const roleOptions = [
-  { label: 'Admin', value: 'Admin' },
-  { label: 'Project Manager', value: 'Project Manager' },
-  { label: 'Developer', value: 'Developer' },
-  { label: 'QA Tester', value: 'QA Tester' },
-  { label: 'Reporter', value: 'Reporter' },
-  { label: 'Viewer', value: 'Viewer' },
-];
+const { roleOptions, loading: rolesLoading, load: loadRoles, leastPrivileged } = useRoleOptions();
 const statusOptions = [
   { label: 'Active', value: 'active' },
   { label: 'Inactive', value: 'inactive' },
@@ -134,4 +139,11 @@ const submitForm = async () => {
     submitting.value = false;
   }
 };
+
+onMounted(async () => {
+  await loadRoles();
+  if (!roleOptions.value.some((option) => option.value === form.role)) {
+    form.role = leastPrivileged() || 'Reporter';
+  }
+});
 </script>

@@ -74,6 +74,7 @@
 import { ref, onMounted, reactive } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useUserStore } from '@/stores/users';
+import { useRoleOptions } from '@/composables/useRoleOptions';
 import AdminLayout from '@/components/layout/AdminLayout.vue';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
 import ComponentCard from '@/components/common/ComponentCard.vue';
@@ -93,14 +94,7 @@ const filters = reactive({
   status: null,
 });
 
-const roleOptions = [
-  { label: 'Admin', value: 'Admin' },
-  { label: 'Project Manager', value: 'Project Manager' },
-  { label: 'Developer', value: 'Developer' },
-  { label: 'QA Tester', value: 'QA Tester' },
-  { label: 'Reporter', value: 'Reporter' },
-  { label: 'Viewer', value: 'Viewer' },
-];
+const { roleOptions, load: loadRoles } = useRoleOptions();
 
 const statusOptions = [
   { label: 'Active', value: 'active' },
@@ -163,6 +157,7 @@ const confirmDelete = async (user) => {
 };
 
 onMounted(() => {
+  loadRoles();
   fetchUsers();
 });
 </script>

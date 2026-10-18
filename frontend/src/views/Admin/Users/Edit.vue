@@ -24,14 +24,35 @@
           <!-- Password -->
           <div>
             <label class="block text-sm font-medium text-gray-700">Password (leave blank to keep current)</label>
-            <InputText v-model="form.password" type="password" class="w-full mt-1" />
+            <InputText v-model="form.password" type="password" class="w-full mt-1"
+              :class="{ 'p-invalid': errors.password }" />
+            <small v-if="errors.password" class="text-red-500">{{ errors.password }}</small>
+          </div>
+
+          <!-- Confirm Password -->
+          <div v-if="form.password">
+            <label class="block text-sm font-medium text-gray-700">Confirm Password *</label>
+            <InputText v-model="form.password_confirmation" type="password" class="w-full mt-1"
+              :class="{ 'p-invalid': errors.password_confirmation }" />
+            <small v-if="errors.password_confirmation" class="text-red-500">{{ errors.password_confirmation }}</small>
           </div>
 
           <!-- Role -->
           <div>
             <label class="block text-sm font-medium text-gray-700">Role</label>
             <Select v-model="form.role" :options="roleOptions" optionLabel="label" optionValue="value"
-              class="w-full mt-1" />
+              :loading="rolesLoading" placeholder="Select role" class="w-full mt-1">
+              <template #option="{ option }">
+                <div class="flex items-center justify-between gap-4">
+                  <span>{{ option.label }}</span>
+                  <span v-if="option.isProtected" class="text-xs text-gray-400">Full access</span>
+                  <span v-else-if="option.permissionsCount !== null" class="text-xs text-gray-400">
+                    {{ option.permissionsCount }} permissions
+                  </span>
+                </div>
+              </template>
+            </Select>
+            <small class="text-gray-400">Changing the role replaces the user's assigned permissions.</small>
           </div>
 
           <!-- Status -->
@@ -57,6 +78,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/users';
+import { useRoleOptions } from '@/composables/useRoleOptions';
 import AdminLayout from '@/components/layout/AdminLayout.vue';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
 import ComponentCard from '@/components/common/ComponentCard.vue';
@@ -75,19 +97,13 @@ const form = reactive({
   name: '',
   email: '',
   password: '',
+  password_confirmation: '',
   role: '',
   status: '',
 });
 const errors = reactive({});
 
-const roleOptions = [
-  { label: 'Admin', value: 'Admin' },
-  { label: 'Project Manager', value: 'Project Manager' },
-  { label: 'Developer', value: 'Developer' },
-  { label: 'QA Tester', value: 'QA Tester' },
-  { label: 'Reporter', value: 'Reporter' },
-  { label: 'Viewer', value: 'Viewer' },
-];
+const { roleOptions, loading: rolesLoading, load: loadRoles, leastPrivileged } = useRoleOptions();
 const statusOptions = [
   { label: 'Active', value: 'active' },
   { label: 'Inactive', value: 'inactive' },
@@ -113,11 +129,31 @@ const submitForm = async () => {
   Object.keys(errors).forEach(key => delete errors[key]);
   if (!form.name) errors.name = 'Name is required.';
   if (!form.email) errors.email = 'Email is required.';
+  if (form.password && form.password.length < 8) {
+    errors.password = 'Password must be at least 8 characters.';
+  }
+  if (form.password && form.password !== form.password_confirmation) {
+    errors.password_confirmation = 'Passwords do not match.';
+  }
   if (Object.keys(errors).length > 0) return;
+
+  const payload = {
+    name: form.name,
+    email: form.email,
+    role: form.role,
+    status: form.status,
+  };
+
+  // Only send the password pair when the admin is actually changing it;
+  // the backend requires a matching `password_confirmation` otherwise.
+  if (form.password) {
+    payload.password = form.password;
+    payload.password_confirmation = form.password_confirmation;
+  }
 
   submitting.value = true;
   try {
-    await userStore.updateUser(route.params.id, { ...form });
+    await userStore.updateUser(route.params.id, payload);
     router.push('/users');
   } catch (error) {
     if (error.response?.data?.errors) {
@@ -133,5 +169,11 @@ const submitForm = async () => {
   }
 };
 
-onMounted(fetchUser);
+onMounted(async () => {
+  await loadRoles();
+  await fetchUser();
+  if (!roleOptions.value.some((option) => option.value === form.role)) {
+    form.role = leastPrivileged() || '';
+  }
+});
 </script>
