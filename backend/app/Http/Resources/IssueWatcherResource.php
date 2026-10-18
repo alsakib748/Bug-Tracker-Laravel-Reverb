@@ -25,7 +25,7 @@ class IssueWatcherResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'avatar' => $avatar,
-            'role' => $this->role?->value,
+            'role' => $this->getRoleNames()->first(),
             'watched_at' => $this->pivot?->created_at?->toISOString(),
         ];
     }

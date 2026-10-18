@@ -7,7 +7,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
           <Select v-model="projectId" :options="projectOptions" optionLabel="name" optionValue="id"
             placeholder="Select project" class="w-64" @change="load" />
-          <div class="flex items-center gap-2">
+          <div v-if="canManage" class="flex items-center gap-2">
             <Button label="Sync repositories" icon="pi pi-refresh" :loading="syncing" severity="secondary"
               outlined @click="sync" />
             <Button label="Connect GitHub" icon="pi pi-github" :loading="connecting" class="bg-gray-900 text-white"
@@ -49,13 +49,15 @@
                 class="text-xs px-2 py-1 rounded">
                 {{ repo.linked ? 'Linked' : 'Not linked' }}
               </span>
-              <Button v-if="!repo.linked" label="Link" class="text-xs text-blue-600 hover:underline" text
-                @click="linkRepo(repo.id)" />
-              <template v-else>
-                <Button label="Sync PRs" icon="pi pi-refresh" class="text-xs" text
-                  :loading="syncingRepoId === repo.id" @click="syncRepo(repo)" />
-                <Button label="Unlink" class="text-xs text-red-600 hover:underline" text
-                  @click="unlinkRepo(repo.id)" />
+              <template v-if="canManage">
+                <Button v-if="!repo.linked" label="Link" class="text-xs text-blue-600 hover:underline" text
+                  @click="linkRepo(repo.id)" />
+                <template v-else>
+                  <Button label="Sync PRs" icon="pi pi-refresh" class="text-xs" text
+                    :loading="syncingRepoId === repo.id" @click="syncRepo(repo)" />
+                  <Button label="Unlink" class="text-xs text-red-600 hover:underline" text
+                    @click="unlinkRepo(repo.id)" />
+                </template>
               </template>
             </div>
           </div>
@@ -79,6 +81,7 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import { useProjectStore } from '@/stores/projects'
+import { usePermissions } from '@/composables/usePermissions'
 import {
   fetchGitHubStatus,
   fetchGitHubRepositories,
@@ -91,6 +94,8 @@ import {
 
 const route = useRoute()
 const projectStore = useProjectStore()
+const { hasPermission } = usePermissions()
+const canManage = computed(() => hasPermission('manage github integration'))
 
 const projectId = ref(null)
 const installation = ref(null)

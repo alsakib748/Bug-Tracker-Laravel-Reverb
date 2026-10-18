@@ -31,7 +31,6 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'avatar' => fake()->imageUrl(100, 100, 'people', true, 'avatar'), // placeholder
-            'role' => fake()->randomElement(['admin', 'developer', 'tester']),
             'status' => fake()->randomElement(['active', 'inactive']),
             'last_seen' => fake()->dateTimeBetween('-1 month', 'now'),
         ];
@@ -47,20 +46,44 @@ class UserFactory extends Factory
         ]);
     }
 
+    /**
+     * Assign a Spatie role once the user has been persisted.
+     */
+    protected function withRole(string $role): static
+    {
+        return $this->afterCreating(function (User $user) use ($role) {
+            $user->assignRole($role);
+        });
+    }
+
     // Helpers for specific roles
     public function admin(): static
     {
-        return $this->state(fn() => ['role' => 'admin']);
+        return $this->withRole(User::ROLE_ADMIN);
+    }
+
+    public function projectManager(): static
+    {
+        return $this->withRole(User::ROLE_PROJECT_MANAGER);
     }
 
     public function developer(): static
     {
-        return $this->state(fn() => ['role' => 'developer']);
+        return $this->withRole(User::ROLE_DEVELOPER);
     }
 
     public function tester(): static
     {
-        return $this->state(fn() => ['role' => 'tester']);
+        return $this->withRole(User::ROLE_QA_TESTER);
     }
 
+    public function reporter(): static
+    {
+        return $this->withRole(User::ROLE_REPORTER);
+    }
+
+    public function viewer(): static
+    {
+        return $this->withRole(User::ROLE_VIEWER);
+    }
 }

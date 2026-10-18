@@ -162,7 +162,7 @@ class BoardBacklogTest extends TestCase
     public function test_non_members_cannot_view_the_board_or_backlog(): void
     {
         $admin = User::factory()->admin()->create();
-        $outsider = User::factory()->create(['role' => 'developer']);
+        $outsider = User::factory()->developer()->create();
         $project = $this->makeProject($admin, [$admin]);
 
         Sanctum::actingAs($outsider);

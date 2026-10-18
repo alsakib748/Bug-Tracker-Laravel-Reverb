@@ -153,7 +153,7 @@
               <Select v-model="insightType" :options="insightTypes" optionLabel="label" optionValue="value"
                 class="w-56" />
             </div>
-            <button class="px-4 py-2 text-white bg-blue-600 rounded-md disabled:opacity-50"
+            <button v-if="canGenerateInsight" class="px-4 py-2 text-white bg-blue-600 rounded-md disabled:opacity-50"
               :disabled="store.saving" @click="requestInsight">
               <i class="mr-1 pi pi-sparkles"></i>
               Generate insight
@@ -279,10 +279,13 @@ import DatePicker from 'primevue/datepicker'
 import VueApexCharts from 'vue3-apexcharts'
 import { useAnalyticsStore } from '@/stores/analytics'
 import { useProjectStore } from '@/stores/projects'
+import { usePermissions } from '@/composables/usePermissions'
 import { toast } from 'vue3-toastify'
 
 const store = useAnalyticsStore()
 const projectStore = useProjectStore()
+const { hasPermission } = usePermissions()
+const canGenerateInsight = computed(() => hasPermission('generate insights'))
 
 const projects = ref([])
 const projectId = ref(null)

@@ -185,12 +185,14 @@ import {
 import SidebarWidget from "./SidebarWidget.vue";
 import BoxCubeIcon from "@/icons/BoxCubeIcon.vue";
 import { useSidebar } from "@/composables/useSidebar";
+import { useAuthStore } from "@/stores/auth";
 
 const route = useRoute();
+const auth = useAuthStore();
 
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar();
 
-const menuGroups = [
+const baseMenuGroups = [
   {
     title: "Menu",
     items: [
@@ -198,129 +200,100 @@ const menuGroups = [
         icon: GridIcon,
         name: "Dashboard",
         path: "/",
+        permission: "view dashboard",
         // subItems: [{ name: "Ecommerce", path: "/", pro: false }],
       },
       {
         icon: TableIcon,
         name: "Board",
         path: "/board",
+        permission: "view board",
       },
       {
         icon: ListIcon,
         name: "Backlog",
         path: "/backlog",
+        permission: "view backlog",
       },
       {
         icon: GridIcon,
         name: "Project",
         path: "/projects",
+        permission: "view projects",
       },
       {
         icon: GridIcon,
         name: "Issues",
         path: "/issues",
-      },
-      {
-        icon: GridIcon,
-        name: "Users",
-        path: "/users",
+        permission: "view issues",
       },
       {
         icon: PlugInIcon,
         name: "Automation",
         path: "/automation",
+        permission: "view automation rules",
       },
       {
         icon: PlugInIcon,
         name: "GitHub",
         path: "/github",
+        permission: "view github integration",
       },
       {
         icon: PieChartIcon,
         name: "Analytics",
         path: "/analytics",
+        permission: "view analytics",
       },
       {
         icon: GridIcon,
         name: "Notifications",
         path: "/notifications",
-      },
-      {
-        name: "Settings",
-        icon: GridIcon,
-        subItems: [
-          { name: "Profile", path: "/profile", pro: false },
-          { name: "Activity Logs", path: "/activity-logs", pro: false },
-        ],
+        permission: "view notifications",
       },
       // {
-      //   icon: CalenderIcon,
-      //   name: "Calendar",
-      //   path: "/calendar",
-      // },
-      // {
-      //   icon: UserCircleIcon,
-      //   name: "User Profile",
+      //   icon: GridIcon,
+      //   name: "Profile",
       //   path: "/profile",
       // },
-
+      {
+        icon: GridIcon,
+        name: "Activity Logs",
+        path: "/activity-logs",
+        permission: "view activity logs",
+      },
+      {
+        icon: GridIcon,
+        name: "Users",
+        path: "/users",
+        permission: "view users",
+      },
+      {
+        icon: UserCircleIcon,
+        name: "Roles & Permissions",
+        path: "/roles",
+        permission: "manage roles",
+      },
       // {
-      //   name: "Forms",
-      //   icon: ListIcon,
+      //   name: "Settings",
+      //   icon: GridIcon,
       //   subItems: [
-      //     { name: "Form Elements", path: "/form-elements", pro: false },
+      //     { name: "Profile", path: "/profile", pro: false },
+      //     { name: "Activity Logs", path: "/activity-logs", pro: false },
       //   ],
-      // },
-      // {
-      //   name: "Tables",
-      //   icon: TableIcon,
-      //   subItems: [{ name: "Basic Tables", path: "/basic-tables", pro: false }],
-      // },
-      // {
-      //   name: "Pages",
-      //   icon: PageIcon,
-      //   subItems: [
-      //     { name: "Black Page", path: "/blank", pro: false },
-      //     { name: "404 Page", path: "/error-404", pro: false },
-      //   ],
-      // },
+      // }
     ],
-  },
-  // {
-  //   title: "Others",
-  //   items: [
-  //     {
-  //       icon: PieChartIcon,
-  //       name: "Charts",
-  //       subItems: [
-  //         { name: "Line Chart", path: "/line-chart", pro: false },
-  //         { name: "Bar Chart", path: "/bar-chart", pro: false },
-  //       ],
-  //     },
-  //     {
-  //       icon: BoxCubeIcon,
-  //       name: "Ui Elements",
-  //       subItems: [
-  //         { name: "Alerts", path: "/alerts", pro: false },
-  //         { name: "Avatars", path: "/avatars", pro: false },
-  //         { name: "Badge", path: "/badge", pro: false },
-  //         { name: "Buttons", path: "/buttons", pro: false },
-  //         { name: "Images", path: "/images", pro: false },
-  //         { name: "Videos", path: "/videos", pro: false },
-  //       ],
-  //     },
-  //     {
-  //       icon: PlugInIcon,
-  //       name: "Authentication",
-  //       subItems: [
-  //         { name: "Signin", path: "/signin", pro: false },
-  //         { name: "Signup", path: "/signup", pro: false },
-  //       ],
-  //     },
-  //     // ... Add other menu items here
-  //   ],
-  // },
+  }
 ];
+
+const menuGroups = computed(() =>
+  baseMenuGroups.map((group) => ({
+    ...group,
+    items: group.items.filter(
+      (item) => !item.permission || auth.hasPermission(item.permission)
+    ),
+  }))
+);
 
 const isActive = (path) => route.path === path;
 
@@ -330,7 +303,7 @@ const toggleSubmenu = (groupIndex, itemIndex) => {
 };
 
 const isAnySubmenuRouteActive = computed(() => {
-  return menuGroups.some((group) =>
+  return menuGroups.value.some((group) =>
     group.items.some(
       (item) =>
         item.subItems && item.subItems.some((subItem) => isActive(subItem.path))
@@ -343,7 +316,7 @@ const isSubmenuOpen = (groupIndex, itemIndex) => {
   return (
     openSubmenu.value === key ||
     (isAnySubmenuRouteActive.value &&
-      menuGroups[groupIndex].items[itemIndex].subItems?.some((subItem) =>
+      menuGroups.value[groupIndex].items[itemIndex].subItems?.some((subItem) =>
         isActive(subItem.path)
       ))
   );

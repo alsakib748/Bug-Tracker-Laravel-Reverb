@@ -83,16 +83,19 @@ const form = reactive({
   email: '',
   password: '',
   password_confirmation: '',
-  role: 'tester',
+  role: 'Reporter',
   status: 'active',
 });
 
 const errors = reactive({});
 
 const roleOptions = [
-  { label: 'Admin', value: 'admin' },
-  { label: 'Developer', value: 'developer' },
-  { label: 'Tester', value: 'tester' },
+  { label: 'Admin', value: 'Admin' },
+  { label: 'Project Manager', value: 'Project Manager' },
+  { label: 'Developer', value: 'Developer' },
+  { label: 'QA Tester', value: 'QA Tester' },
+  { label: 'Reporter', value: 'Reporter' },
+  { label: 'Viewer', value: 'Viewer' },
 ];
 const statusOptions = [
   { label: 'Active', value: 'active' },

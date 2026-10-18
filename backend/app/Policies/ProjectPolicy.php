@@ -13,7 +13,7 @@ class ProjectPolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->hasPermissionTo('view projects');
     }
 
     /**
@@ -21,38 +21,88 @@ class ProjectPolicy
      */
     public function view(User $user, Project $project): bool
     {
-        return $project->isVisibleTo($user);
+        return $user->hasPermissionTo('view projects')
+            && $project->isVisibleTo($user);
     }
 
     /**
-     * Only administrators may create projects.
+     * Only users with the create-projects permission (and admins) may create.
      */
     public function create(User $user): bool
     {
-        return $user->isAdmin();
+        return $user->hasPermissionTo('create projects');
     }
 
     /**
-     * Manage (update) the project: admin, creator, or manager member.
+     * Update the project itself: requires the dedicated permission plus
+     * manager/creator/admin scoping.
      */
     public function update(User $user, Project $project): bool
     {
-        return $project->isManagedBy($user);
+        return $user->hasPermissionTo('update projects')
+            && $project->isManagedBy($user);
     }
 
     /**
-     * Delete the project: admin or creator.
+     * Manage a project's labels.
+     */
+    public function manageLabels(User $user, Project $project): bool
+    {
+        return $user->hasPermissionTo('manage labels')
+            && $project->isManagedBy($user);
+    }
+
+    /**
+     * Manage a project's sprints.
+     */
+    public function manageSprints(User $user, Project $project): bool
+    {
+        return $user->hasPermissionTo('manage sprints')
+            && $project->isManagedBy($user);
+    }
+
+    /**
+     * Manage a project's automation rules.
+     */
+    public function manageAutomation(User $user, Project $project): bool
+    {
+        return $user->hasPermissionTo('manage automation rules')
+            && $project->isManagedBy($user);
+    }
+
+    /**
+     * Manage a project's GitHub integration.
+     */
+    public function manageGitHub(User $user, Project $project): bool
+    {
+        return $user->hasPermissionTo('manage github integration')
+            && $project->isManagedBy($user);
+    }
+
+    /**
+     * Delete the project: permission plus admin or creator.
      */
     public function delete(User $user, Project $project): bool
     {
-        return $user->isAdmin() || $project->created_by === $user->id;
+        return $user->hasPermissionTo('delete projects')
+            && ($user->isAdmin() || $project->created_by === $user->id);
     }
 
     /**
-     * Add or remove project members: admin, creator, or manager member.
+     * Add or remove project members.
      */
     public function manageMembers(User $user, Project $project): bool
     {
-        return $project->isManagedBy($user);
+        return $user->hasPermissionTo('manage project members')
+            && $project->isManagedBy($user);
+    }
+
+    /**
+     * Archive the project.
+     */
+    public function archive(User $user, Project $project): bool
+    {
+        return $user->hasPermissionTo('archive projects')
+            && $project->isManagedBy($user);
     }
 }

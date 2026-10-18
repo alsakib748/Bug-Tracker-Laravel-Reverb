@@ -116,6 +116,8 @@ class GitHubLinkController extends Controller
      */
     public function store(StoreGitHubLinkRequest $request, Issue $issue): GitHubIssueLinkResource
     {
+        $this->authorize('update', $issue);
+
         $pr = GitHubPullRequest::with('repository')->findOrFail(
             (int) $request->validated('github_pull_request_id')
         );

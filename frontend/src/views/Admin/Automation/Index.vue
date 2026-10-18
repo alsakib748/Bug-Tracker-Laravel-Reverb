@@ -6,8 +6,8 @@
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
           <Select v-model="projectId" :options="projects" optionLabel="name" optionValue="id"
             placeholder="Select a project" filter class="w-64" @change="loadRules" />
-          <router-link v-if="projectId" :to="`/automation/create?project=${projectId}`"
-            class="bg-blue-600 text-white px-4 py-2 rounded-md">
+          <router-link v-if="projectId && can('manage automation rules')"
+            :to="`/automation/create?project=${projectId}`" class="bg-blue-600 text-white px-4 py-2 rounded-md">
             + New Rule
           </router-link>
         </div>
@@ -43,23 +43,25 @@
               </span>
             </template>
           </Column>
-          <Column header="Manage" style="min-width: 170px">
+          <Column header="Actions" style="min-width: 170px">
             <template #body="{ data }">
               <router-link :to="`/automation/${data.id}`" class="text-gray-600 mr-2 hover:underline"
                 title="View">
                 <i class="pi pi-eye"></i>
               </router-link>
-              <router-link :to="`/automation/${data.id}/edit`" class="text-blue-600 mr-2 hover:underline"
-                title="Edit">
-                <i class="pi pi-pen-to-square"></i>
-              </router-link>
-              <button :title="data.is_enabled ? 'Disable' : 'Enable'" class="text-amber-600 mr-2 hover:underline"
-                @click="toggle(data)">
-                <i :class="data.is_enabled ? 'pi pi-pause' : 'pi pi-play'"></i>
-              </button>
-              <button title="Delete" class="text-red-600 hover:underline" @click="confirmDelete(data)">
-                <i class="pi pi-trash"></i>
-              </button>
+              <template v-if="can('manage automation rules')">
+                <router-link :to="`/automation/${data.id}/edit`" class="text-blue-600 mr-2 hover:underline"
+                  title="Edit">
+                  <i class="pi pi-pen-to-square"></i>
+                </router-link>
+                <button :title="data.is_enabled ? 'Disable' : 'Enable'" class="text-amber-600 mr-2 hover:underline"
+                  @click="toggle(data)">
+                  <i :class="data.is_enabled ? 'pi pi-pause' : 'pi pi-play'"></i>
+                </button>
+                <button title="Delete" class="text-red-600 hover:underline" @click="confirmDelete(data)">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </template>
             </template>
           </Column>
         </DataTable>
@@ -73,6 +75,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useAutomationStore } from '@/stores/automation'
+import { usePermissions } from '@/composables/usePermissions'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Select from 'primevue/select'
@@ -86,6 +89,7 @@ const currentPageTitle = ref('Automation Rules')
 const route = useRoute()
 const projectStore = useProjectStore()
 const automationStore = useAutomationStore()
+const { can } = usePermissions()
 
 const projects = ref([])
 const projectId = ref(null)

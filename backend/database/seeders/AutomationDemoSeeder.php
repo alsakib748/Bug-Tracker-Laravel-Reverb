@@ -94,11 +94,11 @@ class AutomationDemoSeeder extends Seeder
         // Fallbacks so the seeder still works on sparse projects.
         $this->lead = $this->developers->first()
             ?? $members->first()
-            ?? User::query()->where('role', 'developer')->first()
+            ?? User::role('Developer')->first()
             ?? User::query()->first();
 
         $this->owner = $this->managers->first()
-            ?? User::query()->where('role', 'admin')->first()
+            ?? User::role('Admin')->first()
             ?? $this->lead;
 
         if ($this->testers->isEmpty()) {

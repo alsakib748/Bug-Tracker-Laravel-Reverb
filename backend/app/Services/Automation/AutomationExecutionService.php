@@ -248,6 +248,6 @@ class AutomationExecutionService
             }
         }
 
-        return User::query()->where('role', 'admin')->first() ?? User::query()->first();
+        return User::role('Admin')->first() ?? User::query()->first();
     }
 }

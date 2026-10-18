@@ -94,9 +94,12 @@ const filters = reactive({
 });
 
 const roleOptions = [
-  { label: 'Admin', value: 'admin' },
-  { label: 'Developer', value: 'developer' },
-  { label: 'Tester', value: 'tester' },
+  { label: 'Admin', value: 'Admin' },
+  { label: 'Project Manager', value: 'Project Manager' },
+  { label: 'Developer', value: 'Developer' },
+  { label: 'QA Tester', value: 'QA Tester' },
+  { label: 'Reporter', value: 'Reporter' },
+  { label: 'Viewer', value: 'Viewer' },
 ];
 
 const statusOptions = [
@@ -135,7 +138,7 @@ const onImgError = (event) => {
 };
 
 const confirmDelete = async (user) => {
-  if (user.role === 'admin' && user.id === 1) {
+  if (user.is_admin && user.id === 1) {
     Swal.fire('Cannot delete the default admin user.', '', 'error');
     return;
   }

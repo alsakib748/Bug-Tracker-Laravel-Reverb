@@ -7,6 +7,7 @@ use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\Models\Role;
 
 class AuthController extends Controller
 {
@@ -24,6 +25,11 @@ class AuthController extends Controller
             'email' => $validated['email'],
             'password' => $validated['password'],
         ]);
+
+        // Self-registered users start as Reporters.
+        if (Role::where('name', User::ROLE_REPORTER)->exists()) {
+            $user->assignRole(User::ROLE_REPORTER);
+        }
 
         Auth::login($user);
 
@@ -67,6 +73,20 @@ class AuthController extends Controller
     public function user(Request $request)
     {
         return new UserResource($request->user());
+    }
+
+    /**
+     * Return the authenticated user's roles and effective permissions.
+     */
+    public function permissions(Request $request)
+    {
+        $user = $request->user();
+
+        return response()->json([
+            'roles' => $user->getRoleNames(),
+            'permissions' => $user->getAllPermissions()->pluck('name'),
+            'is_admin' => $user->isAdmin(),
+        ]);
     }
 
 }

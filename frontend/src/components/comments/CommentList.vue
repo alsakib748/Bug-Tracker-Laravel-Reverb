@@ -17,6 +17,7 @@
 
 import { computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { usePermissions } from '@/composables/usePermissions';
 import CommentItem from './CommentItem.vue';
 
 const props = defineProps({
@@ -33,12 +34,15 @@ const props = defineProps({
 const emit = defineEmits(['edit', 'delete']);
 
 const authStore = useAuthStore();
+const { hasPermission } = usePermissions();
 
 const canEdit = (comment) => {
+  if (!hasPermission('update comments')) return false;
   return authStore.isAdmin || authStore.user?.id === comment.user_id;
 };
 
 const canDelete = (comment) => {
+  if (!hasPermission('delete comments')) return false;
   return authStore.isAdmin || authStore.user?.id === comment.user_id;
 }
 

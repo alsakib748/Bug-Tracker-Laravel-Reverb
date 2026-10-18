@@ -3,7 +3,6 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use App\Enums\UserRole;
 use App\Enums\UserStatus;
 use App\Models\ActivityLog;
 use App\Models\Attachment;
@@ -17,14 +16,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Spatie\Permission\Traits\HasRoles;
 
 
-#[Fillable(['name', 'email', 'password', 'role', 'avatar', 'last_seen', 'status'])]
+#[Fillable(['name', 'email', 'password', 'avatar', 'last_seen', 'status'])]
 #[Hidden(['password'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
     /**
      * Get the attributes that should be cast.
@@ -36,7 +36,6 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
             'last_seen' => 'datetime',
-            'role' => UserRole::class,
             'status' => UserStatus::class,
         ];
     }
@@ -111,17 +110,22 @@ class User extends Authenticatable
     // Helper methods
     public function isAdmin(): bool
     {
-        return $this->role === UserRole::ADMIN;
+        return $this->hasRole(self::ROLE_ADMIN);
     }
 
-    public function isDeveloper(): bool
-    {
-        return $this->role === UserRole::DEVELOPER;
-    }
+    /**
+     * Canonical role names used across the application.
+     */
+    public const ROLE_ADMIN = 'Admin';
 
-    public function isTester(): bool
-    {
-        return $this->role === UserRole::TESTER;
-    }
+    public const ROLE_PROJECT_MANAGER = 'Project Manager';
+
+    public const ROLE_DEVELOPER = 'Developer';
+
+    public const ROLE_QA_TESTER = 'QA Tester';
+
+    public const ROLE_REPORTER = 'Reporter';
+
+    public const ROLE_VIEWER = 'Viewer';
 
 }

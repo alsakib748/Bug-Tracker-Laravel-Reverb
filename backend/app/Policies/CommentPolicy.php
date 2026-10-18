@@ -13,7 +13,8 @@ class CommentPolicy
      */
     public function viewAny(User $user, Issue $issue): bool
     {
-        return $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('view comments')
+            && $issue->isVisibleTo($user);
     }
 
     /**
@@ -21,7 +22,8 @@ class CommentPolicy
      */
     public function create(User $user, Issue $issue): bool
     {
-        return $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('create comments')
+            && $issue->isVisibleTo($user);
     }
 
     /**
@@ -29,7 +31,8 @@ class CommentPolicy
      */
     public function update(User $user, Comment $comment): bool
     {
-        return $user->isAdmin() || $comment->user_id === $user->id;
+        return $user->hasPermissionTo('update comments')
+            && ($user->isAdmin() || $comment->user_id === $user->id);
     }
 
     /**
@@ -37,6 +40,7 @@ class CommentPolicy
      */
     public function delete(User $user, Comment $comment): bool
     {
-        return $user->isAdmin() || $comment->user_id === $user->id;
+        return $user->hasPermissionTo('delete comments')
+            && ($user->isAdmin() || $comment->user_id === $user->id);
     }
 }

@@ -25,6 +25,8 @@ class GitHubIntegrationController extends Controller
      */
     public function connect(ConnectGitHubRequest $request, Project $project): JsonResponse
     {
+        $this->authorize('manageGitHub', $project);
+
         try {
             $installation = $this->service->verifyInstallation(
                 (int) $request->validated('installation_id'),
@@ -71,6 +73,8 @@ class GitHubIntegrationController extends Controller
      */
     public function linkRepository(LinkGitHubRepositoryRequest $request, Project $project): JsonResponse
     {
+        $this->authorize('manageGitHub', $project);
+
         $repositoryId = (int) $request->validated('github_repository_id');
 
         $project->githubRepositories()->syncWithoutDetaching([
@@ -91,7 +95,7 @@ class GitHubIntegrationController extends Controller
      */
     public function syncRepository(Request $request, Project $project, GitHubRepository $repository): JsonResponse
     {
-        $this->authorize('update', $project);
+        $this->authorize('manageGitHub', $project);
 
         if (! $project->githubRepositories()->whereKey($repository->id)->exists()) {
             return response()->json(['message' => 'Repository is not linked to this project.'], 422);
@@ -107,7 +111,7 @@ class GitHubIntegrationController extends Controller
      */
     public function unlinkRepository(Request $request, Project $project, GitHubRepository $repository): JsonResponse
     {
-        $this->authorize('update', $project);
+        $this->authorize('manageGitHub', $project);
 
         $project->githubRepositories()->detach($repository->id);
 

@@ -26,33 +26,35 @@
         />
 
         <div class="ml-auto flex flex-wrap items-center gap-2">
-          <template v-if="activeSprint">
-            <span class="text-sm text-gray-500 dark:text-gray-400">
-              Active:
-              <span class="font-semibold text-gray-700 dark:text-gray-200">{{ activeSprint.name }}</span>
-            </span>
-            <Button label="Complete Sprint" size="small" @click="completionVisible = true" />
-            <Button label="Cancel Sprint" size="small" severity="danger" outlined @click="confirmCancel" />
-          </template>
+          <template v-if="hasPermission('manage board')">
+            <template v-if="activeSprint">
+              <span class="text-sm text-gray-500 dark:text-gray-400">
+                Active:
+                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ activeSprint.name }}</span>
+              </span>
+              <Button label="Complete Sprint" size="small" @click="completionVisible = true" />
+              <Button label="Cancel Sprint" size="small" severity="danger" outlined @click="confirmCancel" />
+            </template>
 
-          <template v-else-if="plannedSprints.length">
-            <Select
-              v-model="sprintToStart"
-              :options="plannedSprints"
-              optionLabel="name"
-              optionValue="id"
-              placeholder="Start a sprint"
-              class="w-48"
-            />
-            <Button
-              label="Start Sprint"
-              size="small"
-              :disabled="!sprintToStart"
-              @click="confirmStart"
-            />
-          </template>
+            <template v-else-if="plannedSprints.length">
+              <Select
+                v-model="sprintToStart"
+                :options="plannedSprints"
+                optionLabel="name"
+                optionValue="id"
+                placeholder="Start a sprint"
+                class="w-48"
+              />
+              <Button
+                label="Start Sprint"
+                size="small"
+                :disabled="!sprintToStart"
+                @click="confirmStart"
+              />
+            </template>
 
-          <Button label="New Sprint" size="small" outlined @click="planningVisible = true" />
+            <Button label="New Sprint" size="small" outlined @click="planningVisible = true" />
+          </template>
         </div>
       </div>
 
@@ -104,12 +106,14 @@ import Button from 'primevue/button'
 import { useBoardStore } from '@/stores/board'
 import { useSprintStore } from '@/stores/sprints'
 import { useProjectStore } from '@/stores/projects'
+import { usePermissions } from '@/composables/usePermissions'
 import echo from '@/services/echo'
 
 const router = useRouter()
 const boardStore = useBoardStore()
 const sprintStore = useSprintStore()
 const projectStore = useProjectStore()
+const { hasPermission } = usePermissions()
 
 const currentPageTitle = ref('Kanban Board')
 
@@ -161,6 +165,11 @@ const openIssue = (issue) => {
 }
 
 const onMove = async ({ issue, status, position }) => {
+  if (!hasPermission('manage board')) {
+    Swal.fire('Not allowed', 'You do not have permission to move issues on the board.', 'error')
+    reloadBoard()
+    return
+  }
   try {
     await boardStore.persistMove(issue, status, position)
   } catch (error) {

@@ -22,14 +22,17 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
 
+        // Roles & permissions catalog
+        $this->call(RolesAndPermissionsSeeder::class);
+
         // Admin
         $admin = User::factory()->create([
             'name' => 'Admin',
             'email' => 'admin@gmail.com',
             'password' => Hash::make('11111111'),
-            'role' => 'admin',
             'status' => 'active',
         ]);
+        $admin->assignRole('Admin');
 
         // 5 developers
         $developers = User::factory(5)->developer()->create();
@@ -55,10 +58,10 @@ class DatabaseSeeder extends Seeder
             $candidates = $allUsers->random($memberCount);
 
             foreach ($candidates as $user) {
-                $role = match ($user->role) {
-                    'admin' => 'manager',
-                    'developer' => 'developer',
-                    'tester' => 'tester',
+                $role = match ($user->getRoleNames()->first()) {
+                    'Admin', 'Project Manager' => 'manager',
+                    'Developer' => 'developer',
+                    'QA Tester' => 'tester',
                     default => 'developer',
                 };
                 $project->members()->attach($user->id, [

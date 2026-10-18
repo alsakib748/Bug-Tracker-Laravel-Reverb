@@ -20,14 +20,14 @@
             #{{ link.issue.id }} {{ link.issue.title }}
           </RouterLink>
         </div>
-        <button type="button" class="text-red-500 hover:text-red-700 shrink-0" title="Remove link"
+        <button v-if="canManage" type="button" class="text-red-500 hover:text-red-700 shrink-0" title="Remove link"
           @click="$emit('remove', link)">
           <i class="pi pi-trash"></i>
         </button>
       </li>
     </ul>
 
-    <div class="mt-4 flex flex-wrap items-center gap-2">
+    <div v-if="canManage" class="mt-4 flex flex-wrap items-center gap-2">
       <InputText v-model="targetId" type="number" min="1" placeholder="Issue ID" class="w-32" />
       <Select v-model="linkType" :options="typeOptions" optionLabel="label" optionValue="value" placeholder="Type" />
       <Button label="Link issue" :loading="creating" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md"
@@ -61,6 +61,10 @@ const props = defineProps({
   error: {
     type: [Object, String],
     default: null,
+  },
+  canManage: {
+    type: Boolean,
+    default: false,
   },
 })
 

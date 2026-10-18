@@ -22,7 +22,9 @@ class UserService
                 });
             })
             ->when($filters['role'] ?? null, function ($q, $role) {
-                $q->where('role', $role);
+                $q->whereHas('roles', function ($roleQuery) use ($role) {
+                    $roleQuery->where('name', $role);
+                });
             })
             ->when($filters['status'] ?? null, function ($q, $status) {
                 $q->where('status', $status);
@@ -45,12 +47,13 @@ class UserService
             'name' => $data['name'],
             'email' => $data['email'],
             'password' => $data['password'],
-            'role' => $data['role'] ?? 'tester',
             'status' => $data['status'] ?? 'active',
             'avatar' => $data['avatar'] ?? null,
         ]);
 
-        return $user;
+        $user->assignRole($data['role'] ?? User::ROLE_REPORTER);
+
+        return $user->fresh('roles');
     }
 
     /**
@@ -69,7 +72,6 @@ class UserService
         $updateData = [
             'name' => $data['name'] ?? $user->name,
             'email' => $data['email'] ?? $user->email,
-            'role' => $data['role'] ?? $user->role,
             'status' => $data['status'] ?? $user->status,
         ];
 
@@ -78,7 +80,33 @@ class UserService
         }
 
         $user->update($updateData);
-        return $user->fresh();
+
+        if (!empty($data['role'])) {
+            $this->assignRoles($user, [$data['role']]);
+        }
+
+        return $user->fresh('roles');
+    }
+
+    /**
+     * Sync the user's role (single role per user).
+     *
+     * @param  array<int, string>  $roles
+     */
+    public function assignRoles(User $user, array $roles): User
+    {
+        $roles = array_values(array_filter($roles));
+
+        // Business rule: never leave the system without an administrator.
+        if ($user->isAdmin() && ! in_array(User::ROLE_ADMIN, $roles, true)) {
+            if (User::role(User::ROLE_ADMIN)->count() <= 1) {
+                throw new \Exception('Cannot remove the administrator role from the last admin user.');
+            }
+        }
+
+        $user->syncRoles($roles);
+
+        return $user->fresh('roles');
     }
 
     /**
@@ -87,7 +115,7 @@ class UserService
     public function deleteUser(User $user): void
     {
         // Business rule: prevent deleting the last admin
-        if ($user->isAdmin() && User::where('role', 'admin')->count() <= 1) {
+        if ($user->isAdmin() && User::role(User::ROLE_ADMIN)->count() <= 1) {
             throw new \Exception('Cannot delete the last admin user.');
         }
         $user->delete();

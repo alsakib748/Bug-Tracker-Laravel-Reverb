@@ -29,7 +29,7 @@ class AutomationEngineTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create(['role' => 'admin']);
+        $this->admin = User::factory()->admin()->create();
         $this->project = Project::factory()->create(['created_by' => $this->admin->id]);
 
         $this->project->members()->syncWithoutDetaching([

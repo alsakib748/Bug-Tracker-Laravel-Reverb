@@ -43,6 +43,7 @@ import { ref, onMounted, computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { useProjectStore } from '@/stores/projects';
+import { usePermissions } from '@/composables/usePermissions';
 
 // Import the ProjectMembers component
 import ProjectMembers from '@/components/ProjectMembers.vue';
@@ -51,6 +52,7 @@ const route = useRoute();
 const router = useRouter();
 const projectStore = useProjectStore();
 const authStore = useAuthStore();
+const { hasPermission } = usePermissions();
 
 const project = ref(null);
 const loading = ref(false);
@@ -59,6 +61,7 @@ const currentPageTitle = ref('Project Details');
 
 const canManageMembers = computed(() => {
   if (!project.value) return false;
+  if (!hasPermission('manage project members')) return false;
   // created_by comes back from ProjectResource as a User object (when 'creator'
   // is eager-loaded), so compare against .id, not the object itself. This
   // allows both admins and the project creator to manage members.

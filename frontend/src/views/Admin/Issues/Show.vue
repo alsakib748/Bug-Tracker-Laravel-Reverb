@@ -35,6 +35,7 @@ import IssueLinks from '@/components/issues/IssueLinks.vue';
 import GitHubLinksPanel from '@/components/github/GitHubLinksPanel.vue';
 import AiBugReportPanel from '@/components/ai/AiBugReportPanel.vue';
 
+import { usePermissions } from '@/composables/usePermissions';
 import { useIssueWorkflow } from '@/composables/useIssueWorkflow';
 import { useIssueLabels } from '@/composables/useIssueLabels';
 import { useIssueWatchers } from '@/composables/useIssueWatchers';
@@ -56,6 +57,7 @@ const projectStore = useProjectStore();
 const commentStore = useCommentStore();
 const authStore = useAuthStore();
 const attachmentStore = useAttachmentStore();
+const { hasPermission } = usePermissions();
 
 const { attachments, loading: attachmentsLoading } = storeToRefs(attachmentStore);
 
@@ -575,19 +577,22 @@ onUnmounted(() => {
         <h1 class="text-xl text-gray-700">Issue Assign To:</h1>
 
         <!-- Status Change (workflow) -->
-        <IssueStatusSelect :currentStatus="issue.status" :allowedTransitions="allowedTransitions"
-          :transitioning="transitioning" @transition="openTransitionDialog" />
+        <IssueStatusSelect v-if="hasPermission('change issue status')" :currentStatus="issue.status"
+          :allowedTransitions="allowedTransitions" :transitioning="transitioning"
+          @transition="openTransitionDialog" />
 
         <div class="flex flex-wrap gap-2 mt-3">
           <!-- Assign -->
-          <Select v-model="selectedAssignee" :options="projectMembers" optionLabel="name" optionValue="id"
-            placeholder="Assign to" />
-          <Button @click="assignUser" :loading="actionLoading" label="Assign"
-            class="bg-green-600 text-white px-4 py-2 rounded" />
+          <template v-if="hasPermission('assign issues')">
+            <Select v-model="selectedAssignee" :options="projectMembers" optionLabel="name" optionValue="id"
+              placeholder="Assign to" />
+            <Button @click="assignUser" :loading="actionLoading" label="Assign"
+              class="bg-green-600 text-white px-4 py-2 rounded" />
+          </template>
 
-          <Button @click="reopen" v-if="issue.status === 'resolved'" label="Reopen"
+          <Button @click="reopen" v-if="issue.status === 'resolved' && hasPermission('reopen issues')" label="Reopen"
             class="bg-yellow-600 text-white px-4 py-2 rounded" />
-          <Button @click="closeIssue" v-if="issue.status === 'resolved'" label="Close"
+          <Button @click="closeIssue" v-if="issue.status === 'resolved' && hasPermission('close issues')" label="Close"
             class="bg-gray-600 text-white px-4 py-2 rounded" />
         </div>
 
@@ -596,16 +601,18 @@ onUnmounted(() => {
         <div class="mt-4">
           <div class="flex flex-wrap items-center gap-3 mb-2">
             <h2 class="text-xl text-gray-700">Labels:</h2>
-            <Button label="Edit" icon="pi pi-tag" class="p-button-text p-button-sm"
-              @click="openLabelPicker" />
-            <Button label="Manage" icon="pi pi-cog" class="p-button-text p-button-sm"
-              @click="openLabelManager" />
+            <Button v-if="hasPermission('manage issue labels')" label="Edit" icon="pi pi-tag"
+              class="p-button-text p-button-sm" @click="openLabelPicker" />
+            <Button v-if="hasPermission('manage issue labels')" label="Manage" icon="pi pi-cog"
+              class="p-button-text p-button-sm" @click="openLabelManager" />
           </div>
-          <IssueLabels :labels="issueLabels" :loading="labelsLoading" removable @remove="removeLabel" />
+          <IssueLabels :labels="issueLabels" :loading="labelsLoading"
+            :removable="hasPermission('manage issue labels')" @remove="removeLabel" />
         </div>
 
         <!-- AI Bug Report Assistant -->
-        <div class="mt-6 rounded-lg border border-dashed border-indigo-300 p-4">
+        <div v-if="hasPermission('use ai bug report')"
+          class="mt-6 rounded-lg border border-dashed border-indigo-300 p-4">
           <h2 class="mb-2 text-xl text-gray-700">AI Bug Report Assistant</h2>
           <AiBugReportPanel ref="aiPanel" :projectId="issue.project?.id" :issueId="issue.id"
             :context="assistantContext" :availableLabels="projectLabels" @apply="onAssistantApply" />
@@ -619,24 +626,26 @@ onUnmounted(() => {
 
         <h1 class="text-xl text-gray-700">Issue Image/Screenshot:</h1>
         <AttachmentList :attachments="attachments" :loading="attachmentsLoading" @delete="handleDeleteAttachment" />
-        <AttachmentUpload @upload="handleUploadAttachment" />
+        <AttachmentUpload v-if="hasPermission('upload attachments')" @upload="handleUploadAttachment" />
 
         <h1 class="text-xl text-gray-700">Comments:</h1>
         <CommentList :comments="comments" :loading="loadingComments" @edit="startEdit" @delete="deleteComment" />
 
-        <CommentForm :editing="!!editingComment" :initialContent="editingComment ? editingComment.comment : ''"
+        <CommentForm v-if="hasPermission('create comments') || hasPermission('update comments')"
+          :editing="!!editingComment" :initialContent="editingComment ? editingComment.comment : ''"
           @submit="handleCommentSubmit" @cancelEdit="cancelEdit" />
 
         <!-- Linked issues -->
         <div class="mt-6">
           <IssueLinks :links="links" :loading="linksLoading" :creating="linksCreating" :error="linksError"
-            @create="onCreateLink" @remove="onRemoveLink" />
+            :canManage="hasPermission('manage issue links')" @create="onCreateLink" @remove="onRemoveLink" />
         </div>
 
         <!-- GitHub development links -->
         <div class="mt-6 rounded-lg border border-gray-200 p-4">
           <GitHubLinksPanel :links="githubLinks" :candidates="githubCandidates" :loading="githubLoading"
-            :linking="githubLinking" :error="githubError" @link="onGitHubLink" @remove="onGitHubRemoveLink" />
+            :linking="githubLinking" :error="githubError" :canManage="hasPermission('manage github links')"
+            @link="onGitHubLink" @remove="onGitHubRemoveLink" />
         </div>
 
         <!-- Status History -->

@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\ProjectAnalyticsController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ProjectInsightsController;
 use App\Http\Controllers\Api\ProjectMemberController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\SprintController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Http\Request;
@@ -50,8 +51,22 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/user', [AuthController::class, 'user']);
 
+    // Effective roles + permissions for the authenticated user.
+    Route::get('/me/permissions', [AuthController::class, 'permissions']);
+
     // Admin user management
     Route::apiResource('users', UserController::class)->only(['index', 'store', 'show', 'update', 'destroy']);
+    Route::post('users/{user}/roles', [UserController::class, 'assignRoles']);
+
+    // Role management (permission-gated; Admin role is protected).
+    Route::prefix('roles')->group(function () {
+        Route::get('/', [RoleController::class, 'index']);
+        Route::get('/permissions', [RoleController::class, 'permissions']);
+        Route::post('/', [RoleController::class, 'store']);
+        Route::get('/{role}', [RoleController::class, 'show']);
+        Route::put('/{role}', [RoleController::class, 'update']);
+        Route::delete('/{role}', [RoleController::class, 'destroy']);
+    });
 
     // Authenticated user profile
     Route::prefix('user')->group(function () {
@@ -195,31 +210,31 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/automation-options', AutomationMetadataController::class);
 
     Route::prefix('projects/{project}')->group(function () {
-        Route::get('/automation-rules', [AutomationRuleController::class, 'index']);
-        Route::post('/automation-rules', [AutomationRuleController::class, 'store']);
-        Route::get('/automation-executions', [AutomationRuleController::class, 'executions']);
+        Route::get('/automation-rules', [AutomationRuleController::class, 'index'])->middleware('can:view automation rules');
+        Route::post('/automation-rules', [AutomationRuleController::class, 'store'])->middleware('can:manage automation rules');
+        Route::get('/automation-executions', [AutomationRuleController::class, 'executions'])->middleware('can:view automation rules');
     });
 
     Route::prefix('automation-rules/{rule}')->group(function () {
-        Route::get('/', [AutomationRuleController::class, 'show']);
-        Route::put('/', [AutomationRuleController::class, 'update']);
-        Route::post('/enable', [AutomationRuleController::class, 'enable']);
-        Route::post('/disable', [AutomationRuleController::class, 'disable']);
-        Route::delete('/', [AutomationRuleController::class, 'destroy']);
+        Route::get('/', [AutomationRuleController::class, 'show'])->middleware('can:view automation rules');
+        Route::put('/', [AutomationRuleController::class, 'update'])->middleware('can:manage automation rules');
+        Route::post('/enable', [AutomationRuleController::class, 'enable'])->middleware('can:manage automation rules');
+        Route::post('/disable', [AutomationRuleController::class, 'disable'])->middleware('can:manage automation rules');
+        Route::delete('/', [AutomationRuleController::class, 'destroy'])->middleware('can:manage automation rules');
     });
 
     // Analytics (deterministic metrics) + AI-assisted insights (project-scoped)
     Route::prefix('projects/{project}')->group(function () {
-        Route::get('/analytics/overview', [ProjectAnalyticsController::class, 'overview']);
-        Route::get('/analytics/trends', [ProjectAnalyticsController::class, 'trends']);
-        Route::get('/analytics/workflow', [ProjectAnalyticsController::class, 'workflow']);
-        Route::get('/analytics/github', [ProjectAnalyticsController::class, 'github']);
+        Route::get('/analytics/overview', [ProjectAnalyticsController::class, 'overview'])->middleware('can:view analytics');
+        Route::get('/analytics/trends', [ProjectAnalyticsController::class, 'trends'])->middleware('can:view analytics');
+        Route::get('/analytics/workflow', [ProjectAnalyticsController::class, 'workflow'])->middleware('can:view analytics');
+        Route::get('/analytics/github', [ProjectAnalyticsController::class, 'github'])->middleware('can:view analytics');
 
-        Route::get('/insights', [ProjectInsightsController::class, 'index']);
-        Route::post('/insights', [ProjectInsightsController::class, 'store']);
+        Route::get('/insights', [ProjectInsightsController::class, 'index'])->middleware('can:view insights');
+        Route::post('/insights', [ProjectInsightsController::class, 'store'])->middleware('can:generate insights');
     });
 
-    Route::get('/insights/{insight}', [ProjectInsightsController::class, 'show']);
+    Route::get('/insights/{insight}', [ProjectInsightsController::class, 'show'])->middleware('can:view insights');
 
     //  Notifications
     Route::prefix('notifications')->group(function () {

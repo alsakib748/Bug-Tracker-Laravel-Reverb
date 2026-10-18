@@ -4,7 +4,7 @@
     <div class="space-y-5 sm:space-y-6">
       <ComponentCard title="All Issues">
 
-        <div class="mb-4 flex justify-end">
+        <div v-if="can('create issues')" class="mb-4 flex justify-end">
           <router-link to="/issues/create" class="bg-blue-600 text-white px-4 py-2 rounded-md">
             + New Issue
           </router-link>
@@ -66,12 +66,16 @@
           </Column>
           <Column header="Actions" style="min-width: 150px">
             <template #body="{ data }">
-              <router-link :to="`/issues/${data.id}/edit`" class="text-blue-600 mr-3">
+              <router-link v-if="can('update issues')" :to="`/issues/${data.id}/edit`"
+                class="text-blue-600 mr-3">
                 <i class="pi pi-pen-to-square"></i>
               </router-link>
-              <button @click="confirmDelete(data)" class="text-red-600">
+              <button v-if="can('delete issues')" @click="confirmDelete(data)" class="text-red-600">
                 <i class="pi pi-trash"></i>
               </button>
+              <span v-if="!can('update issues') && !can('delete issues')" class="text-xs text-gray-400">
+                View only
+              </span>
             </template>
           </Column>
         </DataTable>
@@ -96,6 +100,9 @@ import Select from 'primevue/select';
 import Swal from 'sweetalert2';
 
 import { storeToRefs } from 'pinia';
+import { usePermissions } from '@/composables/usePermissions';
+
+const { can } = usePermissions();
 
 const issueStore = useIssueStore();
 

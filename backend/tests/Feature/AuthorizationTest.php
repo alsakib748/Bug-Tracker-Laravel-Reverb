@@ -104,7 +104,7 @@ class AuthorizationTest extends TestCase
             'email' => 'sneaky@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
-            'role' => 'admin',
+            'role' => 'Admin',
         ])->assertStatus(403);
     }
 
@@ -181,7 +181,7 @@ class AuthorizationTest extends TestCase
 
     public function test_project_creator_can_manage_members(): void
     {
-        $owner = User::factory()->developer()->create();
+        $owner = User::factory()->projectManager()->create();
         $candidate = User::factory()->developer()->create();
 
         $project = Project::factory()->create(['created_by' => $owner->id]);
@@ -197,5 +197,42 @@ class AuthorizationTest extends TestCase
         $this->assertTrue(
             $project->members()->where('users.id', $candidate->id)->exists()
         );
+    }
+
+    // ---------- Project CRUD is permission-gated ----------
+
+    public function test_developer_manager_cannot_create_update_or_delete_projects(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $developer = User::factory()->developer()->create();
+
+        $project = Project::factory()->create(['created_by' => $admin->id]);
+        // Even as a project manager member, a Developer lacks the project
+        // create/update/delete permissions.
+        $this->addMember($project, $developer, 'manager');
+
+        Sanctum::actingAs($developer);
+
+        $this->postJson('/api/projects', ['name' => 'Sneaky', 'code' => 'SNEAK'])
+            ->assertStatus(403);
+
+        $this->putJson("/api/projects/{$project->id}", ['name' => 'Renamed'])
+            ->assertStatus(403);
+
+        $this->deleteJson("/api/projects/{$project->id}")->assertStatus(403);
+    }
+
+    public function test_project_manager_can_update_their_project(): void
+    {
+        $manager = User::factory()->projectManager()->create();
+
+        $project = Project::factory()->create(['created_by' => $manager->id]);
+        $this->addMember($project, $manager, 'manager');
+
+        Sanctum::actingAs($manager);
+
+        $this->putJson("/api/projects/{$project->id}", ['name' => 'Renamed'])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Renamed');
     }
 }

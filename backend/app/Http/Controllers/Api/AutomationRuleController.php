@@ -34,7 +34,7 @@ class AutomationRuleController extends Controller
 
     public function store(StoreAutomationRuleRequest $request, Project $project): AutomationRuleResource
     {
-        $this->authorize('update', $project);
+        $this->authorize('manageAutomation', $project);
 
         // Normalize from the raw payload: `validated()` would drop nested keys
         // (such as condition `value`) that carry no explicit validation rule.
@@ -66,7 +66,7 @@ class AutomationRuleController extends Controller
 
     public function update(UpdateAutomationRuleRequest $request, AutomationRule $rule): AutomationRuleResource
     {
-        $this->authorize('update', $rule->project);
+        $this->authorize('manageAutomation', $rule->project);
 
         $payload = array_merge([
             'trigger_type' => $rule->trigger_type,
@@ -100,7 +100,7 @@ class AutomationRuleController extends Controller
 
     public function enable(AutomationRule $rule): AutomationRuleResource
     {
-        $this->authorize('update', $rule->project);
+        $this->authorize('manageAutomation', $rule->project);
 
         $rule->update(['is_enabled' => true]);
 
@@ -109,7 +109,7 @@ class AutomationRuleController extends Controller
 
     public function disable(AutomationRule $rule): AutomationRuleResource
     {
-        $this->authorize('update', $rule->project);
+        $this->authorize('manageAutomation', $rule->project);
 
         $rule->update(['is_enabled' => false]);
 
@@ -118,7 +118,7 @@ class AutomationRuleController extends Controller
 
     public function destroy(AutomationRule $rule): JsonResponse
     {
-        $this->authorize('update', $rule->project);
+        $this->authorize('manageAutomation', $rule->project);
 
         $rule->delete();
 

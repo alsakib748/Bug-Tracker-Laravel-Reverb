@@ -40,7 +40,7 @@ class CommentService
         // which doesn't restrict by membership.
         $isMember = $issue->project->members()->where('user_id', $user->id)->exists();
         $isCreatorOrAssignee = $issue->reporter_id === $user->id || $issue->assigned_to === $user->id;
-        $isAdmin = ($user->role?->value ?? null) === 'admin';
+        $isAdmin = $user->isAdmin();
 
         if (! $isMember && ! $isCreatorOrAssignee && ! $isAdmin) {
             throw new \Exception('You are not a member of this project.');

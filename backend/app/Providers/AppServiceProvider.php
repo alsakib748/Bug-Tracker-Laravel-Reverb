@@ -15,8 +15,12 @@ use App\Integrations\GitHub\Events\GitHubPullRequestMerged;
 use App\Integrations\GitHub\Events\GitHubPullRequestOpened;
 use App\Integrations\GitHub\Events\PullRequestSynced;
 use App\Listeners\Automation\DiscoverAutomationRules;
+use App\Models\User;
+use App\Policies\RolePolicy;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Spatie\Permission\Models\Role;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -33,6 +37,21 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Administrators bypass all authorization checks (gates, policies and
+        // the `can:` middleware). This intentionally does not bypass explicit
+        // `hasPermissionTo()` checks.
+        Gate::before(function (User $user, string $ability) {
+            if ($user->hasRole(User::ROLE_ADMIN)) {
+                return true;
+            }
+
+            return null;
+        });
+
+        // Spatie's Role model lives outside App\Models, so register its policy
+        // explicitly rather than relying on convention-based discovery.
+        Gate::policy(Role::class, RolePolicy::class);
+
         // Automation engine: turn domain events into queued rule evaluations.
         Event::listen(IssueCreated::class, DiscoverAutomationRules::class);
         Event::listen(IssueUpdated::class, DiscoverAutomationRules::class);

@@ -13,7 +13,7 @@ class IssuePolicy
      */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->hasPermissionTo('view issues');
     }
 
     /**
@@ -21,7 +21,8 @@ class IssuePolicy
      */
     public function view(User $user, Issue $issue): bool
     {
-        return $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('view issues')
+            && $issue->isVisibleTo($user);
     }
 
     /**
@@ -29,43 +30,46 @@ class IssuePolicy
      */
     public function create(User $user, ?Project $project = null): bool
     {
-        if ($user->isAdmin()) {
-            return true;
+        if (! $user->hasPermissionTo('create issues')) {
+            return false;
         }
 
-        return $project !== null && $project->isVisibleTo($user);
+        return $project === null || $project->isVisibleTo($user);
     }
 
-    /**
-     * Update, delete, and workflow actions require visibility of the issue.
-     */
     public function update(User $user, Issue $issue): bool
     {
-        return $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('update issues')
+            && $issue->isVisibleTo($user);
     }
 
     public function delete(User $user, Issue $issue): bool
     {
-        return $user->isAdmin() || $issue->reporter_id === $user->id || $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('delete issues')
+            && ($user->isAdmin() || $issue->reporter_id === $user->id || $issue->isVisibleTo($user));
     }
 
     public function assign(User $user, Issue $issue): bool
     {
-        return $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('assign issues')
+            && $issue->isVisibleTo($user);
     }
 
     public function changeStatus(User $user, Issue $issue): bool
     {
-        return $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('change issue status')
+            && $issue->isVisibleTo($user);
     }
 
     public function reopen(User $user, Issue $issue): bool
     {
-        return $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('reopen issues')
+            && $issue->isVisibleTo($user);
     }
 
     public function close(User $user, Issue $issue): bool
     {
-        return $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('close issues')
+            && $issue->isVisibleTo($user);
     }
 }

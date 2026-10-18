@@ -267,7 +267,7 @@ class SprintLifecycleTest extends TestCase
     public function test_non_members_cannot_manage_sprints(): void
     {
         $admin = User::factory()->admin()->create();
-        $outsider = User::factory()->create(['role' => 'developer']);
+        $outsider = User::factory()->developer()->create();
         $project = $this->makeProject($admin, [$admin]);
 
         Sanctum::actingAs($outsider);

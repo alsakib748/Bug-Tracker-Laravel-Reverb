@@ -118,6 +118,7 @@ const confirmDelete = () => {
 <script setup>
 import { computed, ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { usePermissions } from '@/composables/usePermissions';
 import Dialog from 'primevue/dialog';
 
 const props = defineProps({
@@ -127,6 +128,7 @@ const props = defineProps({
 const emit = defineEmits(['delete']);
 
 const authStore = useAuthStore();
+const { hasPermission } = usePermissions();
 const user = computed(() => authStore.user);
 const showPreview = ref(false);
 
@@ -135,6 +137,7 @@ const isImage = computed(() => {
 });
 
 const canDelete = computed(() => {
+  if (!hasPermission('delete attachments')) return false;
   return user.value?.isAdmin || user.value?.id === props.attachment.user_id;
 });
 

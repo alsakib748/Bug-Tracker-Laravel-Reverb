@@ -28,7 +28,7 @@ class LabelController extends Controller
 
     public function store(StoreLabelRequest $request, Project $project): LabelResource
     {
-        $this->authorize('update', $project);
+        $this->authorize('manageLabels', $project);
 
         $label = $this->labels->create($project, $request->user(), $request->validated());
 
@@ -37,14 +37,14 @@ class LabelController extends Controller
 
     public function update(UpdateLabelRequest $request, Label $label): LabelResource
     {
-        $this->authorize('update', $label->project);
+        $this->authorize('manageLabels', $label->project);
 
         return new LabelResource($this->labels->update($label, $request->validated()));
     }
 
     public function destroy(Label $label): Response
     {
-        $this->authorize('update', $label->project);
+        $this->authorize('manageLabels', $label->project);
 
         $this->labels->delete($label);
 

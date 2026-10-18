@@ -29,7 +29,7 @@
               </div>
             </div>
 
-            <div class="flex gap-2">
+            <div v-if="canManage" class="flex gap-2">
               <router-link :to="`/automation/${rule.id}/edit`"
                 class="px-4 py-2 border rounded-md hover:bg-gray-50">
                 Edit
@@ -111,6 +111,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAutomationStore } from '@/stores/automation'
+import { usePermissions } from '@/composables/usePermissions'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -124,6 +125,8 @@ const currentPageTitle = ref('Automation Rule')
 const route = useRoute()
 const router = useRouter()
 const automationStore = useAutomationStore()
+const { hasPermission } = usePermissions()
+const canManage = computed(() => hasPermission('manage automation rules'))
 
 const ruleId = route.params.id
 const loadingExecutions = ref(false)

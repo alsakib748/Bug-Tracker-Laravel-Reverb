@@ -32,21 +32,21 @@
           </span>
           <span class="text-xs text-gray-400 shrink-0">{{ link.link_source_label }}</span>
         </a>
-        <button type="button" class="text-red-500 hover:text-red-700 shrink-0 ml-2" title="Remove link"
+        <button v-if="canManage" type="button" class="text-red-500 hover:text-red-700 shrink-0 ml-2" title="Remove link"
           @click="$emit('remove', link)">
           <i class="pi pi-trash"></i>
         </button>
       </li>
     </ul>
 
-    <div v-if="candidates.length" class="mt-4">
+    <div v-if="canManage && candidates.length" class="mt-4">
       <Select v-model="selectedCandidate" :options="candidateOptions" optionLabel="label" optionValue="value"
         placeholder="Select an open pull request" class="w-full md:w-96" filter />
       <Button label="Link pull request" :loading="linking" :disabled="!selectedCandidate"
         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md mt-2"
         @click="linkSelected" />
     </div>
-    <p v-else-if="!loading" class="text-xs text-gray-400 mt-2">
+    <p v-else-if="canManage && !loading" class="text-xs text-gray-400 mt-2">
       No open pull requests available from this project's linked repositories.
     </p>
 
@@ -79,6 +79,10 @@ const props = defineProps({
   error: {
     type: [Object, String],
     default: null,
+  },
+  canManage: {
+    type: Boolean,
+    default: false,
   },
 })
 

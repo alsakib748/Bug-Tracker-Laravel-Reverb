@@ -38,7 +38,7 @@ class SprintController extends Controller
 
     public function store(StoreSprintRequest $request, Project $project): SprintResource
     {
-        $this->authorize('update', $project);
+        $this->authorize('manageSprints', $project);
 
         $sprint = $this->sprints->createSprint(
             $project,
@@ -64,7 +64,7 @@ class SprintController extends Controller
 
     public function update(UpdateSprintRequest $request, Sprint $sprint): SprintResource
     {
-        $this->authorize('update', $sprint->project);
+        $this->authorize('manageSprints', $sprint->project);
 
         return new SprintResource(
             $this->sprints->updateSprint($sprint, $request->validated())
@@ -73,7 +73,7 @@ class SprintController extends Controller
 
     public function addIssues(AddIssuesToSprintRequest $request, Sprint $sprint): Response
     {
-        $this->authorize('update', $sprint->project);
+        $this->authorize('manageSprints', $sprint->project);
 
         $this->sprints->addIssues(
             $sprint,
@@ -86,7 +86,7 @@ class SprintController extends Controller
 
     public function removeIssue(Sprint $sprint, Issue $issue): Response
     {
-        $this->authorize('update', $sprint->project);
+        $this->authorize('manageSprints', $sprint->project);
 
         $this->sprints->removeIssue($sprint, $issue, request()->user());
 
@@ -95,7 +95,7 @@ class SprintController extends Controller
 
     public function start(Sprint $sprint): SprintResource
     {
-        $this->authorize('update', $sprint->project);
+        $this->authorize('manageSprints', $sprint->project);
 
         return new SprintResource(
             $this->sprints->start($sprint, request()->user())
@@ -104,7 +104,7 @@ class SprintController extends Controller
 
     public function complete(CompleteSprintRequest $request, Sprint $sprint): SprintResource
     {
-        $this->authorize('update', $sprint->project);
+        $this->authorize('manageSprints', $sprint->project);
 
         return new SprintResource(
             $this->sprints->complete(
@@ -118,7 +118,7 @@ class SprintController extends Controller
 
     public function cancel(Sprint $sprint): SprintResource
     {
-        $this->authorize('update', $sprint->project);
+        $this->authorize('manageSprints', $sprint->project);
 
         return new SprintResource(
             $this->sprints->cancel($sprint, request()->user())

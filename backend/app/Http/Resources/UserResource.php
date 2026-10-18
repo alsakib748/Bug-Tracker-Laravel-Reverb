@@ -22,13 +22,18 @@ class UserResource extends JsonResource
                 : asset('storage/' . ltrim($avatar, '/'));
         }
 
+        $roles = $this->getRoleNames();
+
         return [
             'id' => $this->id,
             'name' => $this->name,
             'email' => $this->email,
             'avatar' => $avatar,
-            'role' => $this->role?->value, // enum value
-            'role_label' => $this->role?->label(), // human-readable
+            'role' => $roles->first(), // primary (single) role name
+            'role_label' => $roles->first(),
+            'roles' => $roles,
+            'permissions' => $this->getAllPermissions()->pluck('name'),
+            'is_admin' => $this->isAdmin(),
             'status' => $this->status?->value,
             'status_label' => $this->status?->label(),
             'last_seen' => $this->last_seen?->toISOString(),

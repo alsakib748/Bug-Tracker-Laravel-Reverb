@@ -7,11 +7,23 @@ export const useAuthStore = defineStore('auth', {
     user: null,
     authenticated: false,
     loading: false,
+    roles: [],
+    permissions: [],
   }),
   getters: {
-    isAdmin: (state) => state.user?.role === 'admin',
-    isDeveloper: (state) => state.user?.role === 'developer',
-    isTester: (state) => state.user?.role === 'tester',
+    isAdmin: (state) =>
+      Boolean(state.user?.is_admin) || state.roles.includes('Admin'),
+    isDeveloper: (state) => state.roles.includes('Developer'),
+    isTester: (state) => state.roles.includes('QA Tester'),
+    hasRole: (state) => (role) => state.roles.includes(role),
+    hasPermission: (state) => (permission) =>
+      Boolean(state.user?.is_admin) || state.permissions.includes(permission),
+    hasAnyPermission: (state) => (list = []) =>
+      Boolean(state.user?.is_admin) ||
+      list.some((permission) => state.permissions.includes(permission)),
+    hasAllPermissions: (state) => (list = []) =>
+      Boolean(state.user?.is_admin) ||
+      list.every((permission) => state.permissions.includes(permission)),
   },
   actions: {
     async login(credentials) {
@@ -68,6 +80,8 @@ export const useAuthStore = defineStore('auth', {
         // Normalize common response shapes so `user` is always the user object
         // Support: { data: user }, { user: user }, or direct user object
         this.user = response.data?.data ?? response.data?.user ?? response.data
+        this.roles = this.user?.roles ?? []
+        this.permissions = this.user?.permissions ?? []
         this.authenticated = true
         // console.log(this.user.name)
         return true
@@ -83,6 +97,18 @@ export const useAuthStore = defineStore('auth', {
       try {
         await this.getUser()
       } catch {}
+    },
+    async fetchPermissions() {
+      try {
+        const response = await api.get('/me/permissions')
+        this.roles = response.data?.roles ?? []
+        this.permissions = response.data?.permissions ?? []
+        return response.data
+      } catch (error) {
+        this.roles = []
+        this.permissions = []
+        throw error
+      }
     },
     // async checkAuth() {
     //   try {
@@ -115,6 +141,8 @@ export const useAuthStore = defineStore('auth', {
 
         // Clear auth state
         this.user = null
+        this.roles = []
+        this.permissions = []
         this.authenticated = false
 
         // Reset CSRF token so next login gets fresh token

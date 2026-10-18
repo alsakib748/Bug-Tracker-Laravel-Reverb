@@ -66,6 +66,27 @@ class UserController extends Controller
     }
 
     /**
+     * Sync the roles assigned to a user (admin only).
+     */
+    public function assignRoles(Request $request, User $user)
+    {
+        $this->authorize('assignRoles', $user);
+
+        $validated = $request->validate([
+            'roles' => ['required', 'array'],
+            'roles.*' => ['string', 'exists:roles,name'],
+        ]);
+
+        try {
+            $updated = $this->userService->assignRoles($user, $validated['roles']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return new UserResource($updated);
+    }
+
+    /**
      * Delete a user (admin only).
      */
     public function destroy(User $user)

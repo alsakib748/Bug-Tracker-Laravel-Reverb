@@ -14,7 +14,7 @@
           @change="onProjectChange"
         />
 
-        <div class="ml-auto">
+        <div v-if="canManage" class="ml-auto">
           <Button label="New Sprint" size="small" outlined @click="planningVisible = true" />
         </div>
       </div>
@@ -40,13 +40,14 @@
               item-key="id"
               class="space-y-2 p-4"
               ghost-class="opacity-40"
+              :disabled="!canManage"
               @change="onReorder"
             >
               <template #item="{ element }">
                 <div
                   class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/40"
                 >
-                  <i class="pi pi-bars cursor-grab text-gray-400"></i>
+                  <i v-if="canManage" class="pi pi-bars cursor-grab text-gray-400"></i>
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2">
                       <span class="font-mono text-xs text-gray-400">{{ element.issue_key }}</span>
@@ -70,7 +71,7 @@
                   </span>
 
                   <Select
-                    v-if="plannedSprints.length"
+                    v-if="canManage && plannedSprints.length"
                     v-model="selectedSprints[element.id]"
                     :options="plannedSprints"
                     optionLabel="name"
@@ -135,10 +136,13 @@ import Button from 'primevue/button'
 
 import { useProjectStore } from '@/stores/projects'
 import { useSprintStore } from '@/stores/sprints'
+import { usePermissions } from '@/composables/usePermissions'
 import { fetchBacklog, reorderBacklogIssue } from '@/services/backlogApi'
 
 const projectStore = useProjectStore()
 const sprintStore = useSprintStore()
+const { hasPermission } = usePermissions()
+const canManage = computed(() => hasPermission('manage backlog'))
 
 const { projects } = storeToRefs(projectStore)
 const { plannedSprints } = storeToRefs(sprintStore)

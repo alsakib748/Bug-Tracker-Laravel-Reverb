@@ -36,11 +36,11 @@ class BoardDemoSeeder extends Seeder
         $this->admin = User::query()
             ->where('email', 'admin@gmail.com')
             ->first()
-            ?? User::query()->where('role', 'admin')->first()
-            ?? User::factory()->create(['role' => 'admin', 'status' => 'active']);
+            ?? User::role('Admin')->first()
+            ?? User::factory()->admin()->create(['status' => 'active']);
 
-        $this->developers = User::query()->where('role', 'developer')->orderBy('id')->take(4)->get();
-        $this->testers = User::query()->where('role', 'tester')->orderBy('id')->take(2)->get();
+        $this->developers = User::role('Developer')->orderBy('id')->take(4)->get();
+        $this->testers = User::role('QA Tester')->orderBy('id')->take(2)->get();
 
         // Make the run repeatable.
         Project::query()->where('code', 'AUR')->delete();

@@ -9,7 +9,8 @@
             <i class="pi pi-search"></i>
             <InputText v-model="filters.global.value" placeholder="Search projects..." class="w-64" />
           </div>
-          <router-link to="/projects/create" class="bg-blue-600 text-white px-4 py-2 rounded-md">
+          <router-link v-if="can('create projects')" to="/projects/create"
+            class="bg-blue-600 text-white px-4 py-2 rounded-md">
             + New Project
           </router-link>
         </div>
@@ -50,12 +51,16 @@
 
           <Column header="Actions" style="min-width: 150px">
             <template #body="{ data }">
-              <router-link :to="`/projects/${data.id}/edit`" class="text-blue-600 mr-2 hover:underline">
+              <router-link v-if="can('update projects')" :to="`/projects/${data.id}/edit`"
+                class="text-blue-600 mr-2 hover:underline">
                 <i class="pi pi-pen-to-square"></i>
               </router-link>
-              <button @click="confirmDelete(data)" class="text-red-600 hover:underline">
+              <button v-if="can('delete projects')" @click="confirmDelete(data)" class="text-red-600 hover:underline">
                 <i class="pi pi-trash"></i>
               </button>
+              <span v-if="!can('update projects') && !can('delete projects')" class="text-xs text-gray-400">
+                View only
+              </span>
             </template>
           </Column>
 
@@ -77,6 +82,9 @@ import PageBreadcrumb from "@/components/common/PageBreadcrumb.vue";
 import AdminLayout from "@/components/layout/AdminLayout.vue";
 import ComponentCard from "@/components/common/ComponentCard.vue";
 import Swal from 'sweetalert2';
+import { usePermissions } from '@/composables/usePermissions';
+
+const { can } = usePermissions();
 
 const currentPageTitle = ref("Project List");
 

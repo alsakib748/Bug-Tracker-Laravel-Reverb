@@ -13,7 +13,8 @@ class AttachmentPolicy
      */
     public function viewAny(User $user, Issue $issue): bool
     {
-        return $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('view attachments')
+            && $issue->isVisibleTo($user);
     }
 
     /**
@@ -21,7 +22,8 @@ class AttachmentPolicy
      */
     public function view(User $user, Attachment $attachment): bool
     {
-        return $attachment->issue->isVisibleTo($user);
+        return $user->hasPermissionTo('view attachments')
+            && $attachment->issue->isVisibleTo($user);
     }
 
     /**
@@ -29,7 +31,8 @@ class AttachmentPolicy
      */
     public function create(User $user, Issue $issue): bool
     {
-        return $issue->isVisibleTo($user);
+        return $user->hasPermissionTo('upload attachments')
+            && $issue->isVisibleTo($user);
     }
 
     /**
@@ -37,6 +40,7 @@ class AttachmentPolicy
      */
     public function delete(User $user, Attachment $attachment): bool
     {
-        return $user->isAdmin() || $attachment->user_id === $user->id;
+        return $user->hasPermissionTo('delete attachments')
+            && ($user->isAdmin() || $attachment->user_id === $user->id);
     }
 }

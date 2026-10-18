@@ -25,10 +25,9 @@ class AuthenticationTest extends TestCase
 
     public function test_user_can_login_with_valid_credentials(): void
     {
-        $user = User::factory()->create([
+        $user = User::factory()->developer()->create([
             'email' => 'jane@example.com',
             'password' => 'password',
-            'role' => 'developer',
         ]);
 
         $response = $this->postJson('/api/login', [
@@ -72,8 +71,10 @@ class AuthenticationTest extends TestCase
             'name' => 'New Person',
         ]);
 
-        // Default role should be tester per the migration default.
-        $this->assertSame('tester', User::where('email', 'new@example.com')->first()->role->value);
+        // Self-registered users are assigned the Reporter role.
+        $this->assertTrue(
+            User::where('email', 'new@example.com')->first()->hasRole('Reporter')
+        );
     }
 
     public function test_registration_requires_a_valid_payload(): void
