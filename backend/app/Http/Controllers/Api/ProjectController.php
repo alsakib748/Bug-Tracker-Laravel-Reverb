@@ -28,7 +28,10 @@ class ProjectController extends Controller
         $this->authorize('viewAny', Project::class);
 
         try {
-            $projects = $this->projectService->getAllProjects($request->user());
+            $filters = $request->only(['search', 'status']);
+            $perPage = (int) $request->get('per_page', 15);
+
+            $projects = $this->projectService->getAllProjects($request->user(), $filters, $perPage);
 
             return ProjectResource::collection($projects);
         } catch (\Exception $e) {

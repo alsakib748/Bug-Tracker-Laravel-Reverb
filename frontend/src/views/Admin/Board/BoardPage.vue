@@ -62,7 +62,9 @@
         Select a project to view its board.
       </div>
 
-      <div v-else-if="boardStore.loading" class="p-8 text-center text-gray-500">Loading board...</div>
+      <div v-else-if="boardStore.loading" class="p-8">
+        <AppSkeleton class="space-y-3" />
+      </div>
 
       <KanbanBoard
         v-else
@@ -107,6 +109,7 @@ import { useBoardStore } from '@/stores/board'
 import { useSprintStore } from '@/stores/sprints'
 import { useProjectStore } from '@/stores/projects'
 import { usePermissions } from '@/composables/usePermissions'
+import AppSkeleton from '@/components/common/AppSkeleton.vue'
 import echo from '@/services/echo'
 import { onRealtimeReconnect, debounce } from '@/services/realtime'
 

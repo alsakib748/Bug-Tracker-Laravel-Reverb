@@ -20,22 +20,36 @@ use Illuminate\Support\Facades\DB;
 class GitHubAnalyticsQuery
 {
     /**
+     * Scope a query builder to the projects in the filters.
+     *
+     * @param  \Illuminate\Database\Query\Builder  $query
+     * @param  string  $column
+     * @return \Illuminate\Database\Query\Builder
+     */
+    protected function scopeProjects($query, AnalyticsFilters $filters, string $column)
+    {
+        return $filters->projectIds !== []
+            ? $query->whereIn($column, $filters->projectIds)
+            : $query;
+    }
+
+    /**
      * Hours between an issue's creation and the first linked PR being opened.
      *
      * @return array{median_hours: float|null, sample_size: int, coverage: string}
      */
     public function timeToFirstPR(AnalyticsFilters $filters): array
     {
-        $durations = DB::table('issues')
+        $durations = $this->scopeProjects(DB::table('issues'), $filters, 'issues.project_id')
             ->join('github_issue_links', 'github_issue_links.issue_id', '=', 'issues.id')
             ->join('github_pull_requests', function ($join) {
                 $join->on('github_pull_requests.github_repository_id', '=', 'github_issue_links.github_repository_id')
                     ->on('github_pull_requests.github_pr_id', '=', 'github_issue_links.github_entity_id');
             })
-            ->where('issues.project_id', $filters->projectId)
             ->where('github_issue_links.entity_type', 'pull_request')
             ->whereNotNull('github_pull_requests.opened_at')
-            ->whereBetween('issues.created_at', [$filters->periodStart, $filters->periodEnd])
+            ->where('issues.created_at', '>=', $filters->periodStart)
+            ->where('issues.created_at', '<', $filters->periodEnd)
             ->select('issues.created_at', 'github_pull_requests.opened_at')
             ->get()
             ->map(fn ($row) => $this->hoursBetween($row->created_at, $row->opened_at))
@@ -63,9 +77,12 @@ class GitHubAnalyticsQuery
     {
         $threshold = now()->subHours($thresholdHours);
 
-        $count = DB::table('github_pull_requests')
-            ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id')
-            ->where('github_project_repositories.project_id', $filters->projectId)
+        $count = $this->scopeProjects(
+            DB::table('github_pull_requests')
+                ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id'),
+            $filters,
+            'github_project_repositories.project_id'
+        )
             ->where('github_pull_requests.state', 'open')
             ->where('github_pull_requests.draft', false)
             ->whereNotNull('github_pull_requests.opened_at')
@@ -86,19 +103,27 @@ class GitHubAnalyticsQuery
     public function prThroughput(AnalyticsFilters $filters): array
     {
         $opened = $this->weeklyBuckets(
-            DB::table('github_pull_requests')
-                ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id')
-                ->where('github_project_repositories.project_id', $filters->projectId)
-                ->whereBetween('github_pull_requests.opened_at', [$filters->periodStart, $filters->periodEnd])
+            $this->scopeProjects(
+                DB::table('github_pull_requests')
+                    ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id'),
+                $filters,
+                'github_project_repositories.project_id'
+            )
+                ->where('github_pull_requests.opened_at', '>=', $filters->periodStart)
+                ->where('github_pull_requests.opened_at', '<', $filters->periodEnd)
                 ->pluck('github_pull_requests.opened_at'),
         );
 
         $merged = $this->weeklyBuckets(
-            DB::table('github_pull_requests')
-                ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id')
-                ->where('github_project_repositories.project_id', $filters->projectId)
+            $this->scopeProjects(
+                DB::table('github_pull_requests')
+                    ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id'),
+                $filters,
+                'github_project_repositories.project_id'
+            )
                 ->whereNotNull('github_pull_requests.merged_at')
-                ->whereBetween('github_pull_requests.merged_at', [$filters->periodStart, $filters->periodEnd])
+                ->where('github_pull_requests.merged_at', '>=', $filters->periodStart)
+                ->where('github_pull_requests.merged_at', '<', $filters->periodEnd)
                 ->pluck('github_pull_requests.merged_at'),
         );
 
@@ -122,12 +147,16 @@ class GitHubAnalyticsQuery
      */
     public function prMergeDuration(AnalyticsFilters $filters): array
     {
-        $durations = DB::table('github_pull_requests')
-            ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id')
-            ->where('github_project_repositories.project_id', $filters->projectId)
+        $durations = $this->scopeProjects(
+            DB::table('github_pull_requests')
+                ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id'),
+            $filters,
+            'github_project_repositories.project_id'
+        )
             ->whereNotNull('github_pull_requests.merged_at')
             ->whereNotNull('github_pull_requests.opened_at')
-            ->whereBetween('github_pull_requests.merged_at', [$filters->periodStart, $filters->periodEnd])
+            ->where('github_pull_requests.merged_at', '>=', $filters->periodStart)
+            ->where('github_pull_requests.merged_at', '<', $filters->periodEnd)
             ->select('github_pull_requests.opened_at', 'github_pull_requests.merged_at')
             ->get()
             ->map(fn ($row) => $this->hoursBetween($row->opened_at, $row->merged_at))
@@ -150,12 +179,11 @@ class GitHubAnalyticsQuery
      */
     public function issuesWithoutPR(AnalyticsFilters $filters): int
     {
-        return DB::table('issues')
+        return $this->scopeProjects(DB::table('issues'), $filters, 'issues.project_id')
             ->leftJoin('github_issue_links', function ($join) {
                 $join->on('github_issue_links.issue_id', '=', 'issues.id')
                     ->where('github_issue_links.entity_type', 'pull_request');
             })
-            ->where('issues.project_id', $filters->projectId)
             ->whereIn('issues.status', MetricDefinitions::allOpenStatuses())
             ->whereNull('github_issue_links.id')
             ->count();

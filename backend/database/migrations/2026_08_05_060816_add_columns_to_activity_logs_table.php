@@ -31,22 +31,23 @@ return new class extends Migration {
      */
     public function down(): void
     {
+        // Indexes must be dropped before the columns they reference.
         Schema::table('activity_logs', function (Blueprint $table) {
-            // Drop the columns
-            $table->dropColumn([
-                'entity_type',
-                'entity_id',
-                'properties',
-                'user_agent',
-            ]);
-
-            // Drop the indexes (optional, but good practice)
             $table->dropIndex(['entity_type']);
             $table->dropIndex(['entity_id']);
             $table->dropIndex(['user_id', 'created_at']);
             $table->dropIndex(['project_id', 'created_at']);
             $table->dropIndex(['issue_id', 'created_at']);
             $table->dropIndex(['action']);
+        });
+
+        Schema::table('activity_logs', function (Blueprint $table) {
+            $table->dropColumn([
+                'entity_type',
+                'entity_id',
+                'properties',
+                'user_agent',
+            ]);
         });
     }
 };

@@ -246,6 +246,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     //  Activity-Logs
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
+    Route::get('/activity-logs/users', [ActivityLogController::class, 'users']);
     Route::get('/activity-logs/{activityLog}', [ActivityLogController::class, 'show']);
 
     //  GitHub integration (project-scoped repository connection)

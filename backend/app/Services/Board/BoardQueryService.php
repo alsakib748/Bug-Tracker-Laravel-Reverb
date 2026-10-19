@@ -39,7 +39,7 @@ final class BoardQueryService
     {
         $query = Issue::query()
             ->where('project_id', $project->id)
-            ->with(['assignee:id,name,avatar', 'labels:id,name,color', 'sprint:id,name,status']);
+            ->with(['assignee:id,name,avatar', 'labels:id,name,color']);
 
         if ($sprintId !== null) {
             $query->where('sprint_id', $sprintId);
@@ -83,6 +83,7 @@ final class BoardQueryService
                 IssueStatus::CLOSED->value,
             ])
             ->with(['assignee:id,name,avatar', 'labels:id,name,color'])
+            ->withCount(['comments', 'attachments'])
             ->orderBy('backlog_position')
             ->orderByDesc('id')
             ->get();

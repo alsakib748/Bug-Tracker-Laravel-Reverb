@@ -3,7 +3,7 @@ import { useAuthStore } from '../stores/auth.js'
 
 import Login from '@/views/Auth/Signin.vue'
 import Signup from '@/views/Auth/Signup.vue'
-import Dashboard from '@/views/Ecommerce.vue'
+import Dashboard from '@/views/Admin/Dashboard/DashboardPage.vue'
 import NotFound from '@/views/Errors/FourZeroFour.vue'
 import Forbidden from '@/views/Errors/Forbidden.vue'
 
@@ -34,6 +34,7 @@ import NotificationsShow from '@/views/Admin/Notifications/Show.vue'
 
 // Import Activity Logs Pages
 import ActivityLogsIndex from '@/views/Admin/ActivityLogs/Index.vue'
+import ActivityLogsShow from '@/views/Admin/ActivityLogs/Show.vue'
 
 // Import Board & Backlog Pages
 import BoardPage from '@/views/Admin/Board/BoardPage.vue'
@@ -165,6 +166,12 @@ const routes = [
     path: '/activity-logs',
     name: 'ActivityLogsIndex',
     component: ActivityLogsIndex,
+    meta: { requiresAuth: true, permission: 'view activity logs' },
+  },
+  {
+    path: '/activity-logs/:id',
+    name: 'ActivityLogsShow',
+    component: ActivityLogsShow,
     meta: { requiresAuth: true, permission: 'view activity logs' },
   },
   {

@@ -31,15 +31,21 @@ class ProjectService
         $this->activityLogService = $activityLogService;
     }
 
-    public function getAllProjects(User $user)
+    public function getAllProjects(User $user, array $filters = [], int $perPage = 15)
     {
-        $projects = Project::query()
+        $query = Project::query()
             ->visibleTo($user)
             ->with(['creator', 'members'])
-            ->orderBy('id', 'desc')
-            ->get();
+            ->when($filters['search'] ?? null, function ($q, $search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
+            })
+            ->when($filters['status'] ?? null, function ($q, $status) {
+                $q->where('status', $status);
+            })
+            ->orderBy('id', 'desc');
 
-        return $projects;
+        return $query->paginate($perPage);
     }
 
     public function createProject(array $data): Project

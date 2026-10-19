@@ -4,6 +4,8 @@ namespace App\Analytics\Queries;
 
 use App\Analytics\DTOs\AnalyticsFilters;
 use App\Analytics\Support\MetricDefinitions;
+use App\Enums\IssueStatus;
+use App\Enums\Priority;
 use App\Models\Issue;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -16,7 +18,7 @@ class IssueMetricsQuery
     protected function base(AnalyticsFilters $filters): Builder
     {
         return Issue::query()
-            ->where('project_id', $filters->projectId)
+            ->when($filters->projectIds !== [], fn (Builder $q) => $q->whereIn('project_id', $filters->projectIds))
             ->when($filters->priorities !== [], fn (Builder $q) => $q->whereIn('priority', $filters->priorities))
             ->when($filters->statuses !== [], fn (Builder $q) => $q->whereIn('status', $filters->statuses))
             ->when($filters->assigneeId, fn (Builder $q) => $q->where('assigned_to', $filters->assigneeId))
@@ -24,7 +26,30 @@ class IssueMetricsQuery
     }
 
     /**
-     * KPI summary for a project.
+     * Half-open period window: [periodStart, periodEnd).
+     *
+     * @return array{0: string, 1: string}
+     */
+    protected function window(AnalyticsFilters $filters): array
+    {
+        return [$filters->periodStart->toDateTimeString(), $filters->periodEnd->toDateTimeString()];
+    }
+
+    /**
+     * Issues resolved within the period, keyed on the authoritative resolved_at
+     * timestamp (set by WorkflowService on the resolved transition).
+     */
+    protected function resolvedInPeriod(Builder $query, AnalyticsFilters $filters): Builder
+    {
+        return $query
+            ->whereIn('status', MetricDefinitions::allResolvedStatuses())
+            ->whereNotNull('resolved_at')
+            ->where('resolved_at', '>=', $filters->periodStart)
+            ->where('resolved_at', '<', $filters->periodEnd);
+    }
+
+    /**
+     * KPI summary for the scoped projects.
      *
      * @return array<string, int>
      */
@@ -38,15 +63,10 @@ class IssueMetricsQuery
                 ->whereIn('status', MetricDefinitions::allOpenStatuses())
                 ->count(),
             'created_in_period' => (clone $base)
-                ->whereBetween('created_at', [$filters->periodStart, $filters->periodEnd])
+                ->where('created_at', '>=', $filters->periodStart)
+                ->where('created_at', '<', $filters->periodEnd)
                 ->count(),
-            'resolved_in_period' => (clone $base)
-                ->whereIn('status', MetricDefinitions::allResolvedStatuses())
-                ->whereRaw('COALESCE(resolved_at, updated_at) BETWEEN ? AND ?', [
-                    $filters->periodStart->toDateTimeString(),
-                    $filters->periodEnd->toDateTimeString(),
-                ])
-                ->count(),
+            'resolved_in_period' => $this->resolvedInPeriod(clone $base, $filters)->count(),
             'overdue_issues' => (clone $base)
                 ->whereIn('status', MetricDefinitions::allOpenStatuses())
                 ->whereNotNull('due_date')
@@ -66,18 +86,15 @@ class IssueMetricsQuery
      */
     public function byStatus(AnalyticsFilters $filters): array
     {
-        return DB::table('issues')
-            ->where('project_id', $filters->projectId)
-            ->when($filters->statuses !== [], fn ($q) => $q->whereIn('status', $filters->statuses))
-            ->when($filters->priorities !== [], fn ($q) => $q->whereIn('priority', $filters->priorities))
-            ->when($filters->assigneeId, fn ($q) => $q->where('assigned_to', $filters->assigneeId))
-            ->when($filters->sprintId, fn ($q) => $q->where('sprint_id', $filters->sprintId))
+        return $this->base($filters)
             ->select('status', DB::raw('COUNT(*) as total'))
             ->groupBy('status')
             ->orderByDesc('total')
             ->get()
             ->map(fn ($row) => [
-                'status' => (string) $row->status,
+                'status' => $row->status instanceof IssueStatus
+                    ? $row->status->value
+                    : (string) $row->status,
                 'count' => (int) $row->total,
             ])
             ->all();
@@ -90,17 +107,14 @@ class IssueMetricsQuery
      */
     public function byPriority(AnalyticsFilters $filters): array
     {
-        return DB::table('issues')
-            ->where('project_id', $filters->projectId)
-            ->when($filters->statuses !== [], fn ($q) => $q->whereIn('status', $filters->statuses))
-            ->when($filters->priorities !== [], fn ($q) => $q->whereIn('priority', $filters->priorities))
-            ->when($filters->assigneeId, fn ($q) => $q->where('assigned_to', $filters->assigneeId))
-            ->when($filters->sprintId, fn ($q) => $q->where('sprint_id', $filters->sprintId))
+        return $this->base($filters)
             ->select('priority', DB::raw('COUNT(*) as total'))
             ->groupBy('priority')
             ->get()
             ->map(fn ($row) => [
-                'priority' => (string) $row->priority,
+                'priority' => $row->priority instanceof Priority
+                    ? $row->priority->value
+                    : (string) $row->priority,
                 'count' => (int) $row->total,
             ])
             ->all();

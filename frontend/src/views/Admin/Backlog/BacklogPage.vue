@@ -28,7 +28,9 @@
               <span class="text-sm text-gray-400">{{ backlog.length }} issues</span>
             </div>
 
-            <div v-if="loading" class="p-8 text-center text-gray-500">Loading backlog...</div>
+            <div v-if="loading" class="p-8">
+              <AppSkeleton class="space-y-3" />
+            </div>
 
             <div v-else-if="!backlog.length" class="p-8 text-center text-gray-400">
               The backlog is empty.
@@ -137,6 +139,7 @@ import Button from 'primevue/button'
 import { useProjectStore } from '@/stores/projects'
 import { useSprintStore } from '@/stores/sprints'
 import { usePermissions } from '@/composables/usePermissions'
+import AppSkeleton from '@/components/common/AppSkeleton.vue'
 import { fetchBacklog, reorderBacklogIssue } from '@/services/backlogApi'
 import echo from '@/services/echo'
 import { onRealtimeReconnect, debounce } from '@/services/realtime'

@@ -5,7 +5,6 @@ namespace App\Analytics\Queries;
 use App\Analytics\DTOs\AnalyticsFilters;
 use App\Analytics\Support\MetricDefinitions;
 use App\Models\Issue;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class ResolutionMetricsQuery
@@ -13,62 +12,50 @@ class ResolutionMetricsQuery
     /**
      * Median resolution time in hours for issues resolved in the period.
      *
-     * Prefers resolved_at; falls back to updated_at when resolved_at is not
-     * set, and reports the resulting coverage so callers can judge accuracy.
+     * Resolution is measured with the authoritative resolved_at timestamp set
+     * by WorkflowService. Issues resolved before resolved_at existed are
+     * reported separately via the legacy_sample_size/coverage keys so callers
+     * can judge accuracy.
      *
-     * @return array{median_hours: float|null, sample_size: int, coverage: string}
+     * @return array{median_hours: float|null, sample_size: int, legacy_sample_size: int, coverage: string}
      */
     public function medianResolutionHours(AnalyticsFilters $filters): array
     {
-        $issues = Issue::query()
-            ->where('project_id', $filters->projectId)
-            ->whereIn('status', MetricDefinitions::allResolvedStatuses())
-            ->where(function ($query) use ($filters) {
-                $query
-                    ->whereBetween('resolved_at', [$filters->periodStart, $filters->periodEnd])
-                    ->orWhere(function ($fallback) use ($filters) {
-                        $fallback->whereNull('resolved_at')
-                            ->whereBetween('updated_at', [$filters->periodStart, $filters->periodEnd]);
-                    });
-            })
-            ->get(['created_at', 'resolved_at', 'updated_at']);
+        $scoped = fn () => Issue::query()
+            ->when($filters->projectIds !== [], fn ($q) => $q->whereIn('project_id', $filters->projectIds))
+            ->whereIn('status', MetricDefinitions::allResolvedStatuses());
 
-        if ($issues->isEmpty()) {
+        $modern = $scoped()
+            ->whereNotNull('resolved_at')
+            ->where('resolved_at', '>=', $filters->periodStart)
+            ->where('resolved_at', '<', $filters->periodEnd)
+            ->get(['created_at', 'resolved_at']);
+
+        $legacy = $scoped()
+            ->whereNull('resolved_at')
+            ->where('updated_at', '>=', $filters->periodStart)
+            ->where('updated_at', '<', $filters->periodEnd)
+            ->get(['created_at', 'updated_at']);
+
+        $modernDurations = $this->durations($modern->pluck('resolved_at'), $modern->pluck('created_at'));
+        $legacyDurations = $this->durations($legacy->pluck('updated_at'), $legacy->pluck('created_at'));
+
+        $all = $modernDurations->concat($legacyDurations)->sort()->values();
+
+        if ($all->isEmpty()) {
             return [
                 'median_hours' => null,
                 'sample_size' => 0,
-                'coverage' => 'unknown',
-            ];
-        }
-
-        $estimated = $issues->contains(fn (Issue $issue) => $issue->resolved_at === null);
-
-        $durations = $issues
-            ->map(function (Issue $issue) {
-                $end = $issue->resolved_at ?? $issue->updated_at;
-
-                if (! $end || ! $issue->created_at) {
-                    return null;
-                }
-
-                return abs((float) $issue->created_at->diffInMinutes($end)) / 60;
-            })
-            ->filter(fn (?float $hours) => $hours !== null && $hours >= 0)
-            ->sort()
-            ->values();
-
-        if ($durations->isEmpty()) {
-            return [
-                'median_hours' => null,
-                'sample_size' => 0,
+                'legacy_sample_size' => 0,
                 'coverage' => 'unknown',
             ];
         }
 
         return [
-            'median_hours' => round($this->median($durations), 1),
-            'sample_size' => $durations->count(),
-            'coverage' => $estimated ? 'estimated' : 'complete',
+            'median_hours' => round($this->median($all), 1),
+            'sample_size' => $all->count(),
+            'legacy_sample_size' => $legacyDurations->count(),
+            'coverage' => $legacyDurations->isEmpty() ? 'complete' : 'estimated',
         ];
     }
 
@@ -80,32 +67,33 @@ class ResolutionMetricsQuery
      */
     public function createdVsResolved(AnalyticsFilters $filters, string $granularity = 'day'): array
     {
-        $created = Issue::query()
-            ->where('project_id', $filters->projectId)
-            ->whereBetween('created_at', [$filters->periodStart, $filters->periodEnd])
-            ->pluck('created_at')
-            ->map(fn ($value) => $this->bucket((string) $value, $granularity))
-            ->countBy();
+        $scope = fn ($query) => $filters->projectIds !== []
+            ? $query->whereIn('project_id', $filters->projectIds)
+            : $query;
 
-        $resolved = Issue::query()
-            ->where('project_id', $filters->projectId)
+        $created = $scope(Issue::query())
+            ->where('created_at', '>=', $filters->periodStart)
+            ->where('created_at', '<', $filters->periodEnd)
+            ->get(['created_at'])
+            ->countBy(fn (Issue $issue) => $this->bucket($issue->created_at, $granularity));
+
+        $resolvedModern = $scope(Issue::query())
             ->whereIn('status', MetricDefinitions::allResolvedStatuses())
-            ->where(function ($query) use ($filters) {
-                $query
-                    ->whereBetween('resolved_at', [$filters->periodStart, $filters->periodEnd])
-                    ->orWhere(function ($fallback) use ($filters) {
-                        $fallback->whereNull('resolved_at')
-                            ->whereBetween('updated_at', [$filters->periodStart, $filters->periodEnd]);
-                    });
-            })
-            ->get(['resolved_at', 'updated_at'])
-            ->map(function (Issue $issue) use ($granularity) {
-                $value = $issue->resolved_at ?? $issue->updated_at;
+            ->whereNotNull('resolved_at')
+            ->where('resolved_at', '>=', $filters->periodStart)
+            ->where('resolved_at', '<', $filters->periodEnd)
+            ->get(['resolved_at'])
+            ->countBy(fn (Issue $issue) => $this->bucket($issue->resolved_at, $granularity));
 
-                return $value ? $this->bucket($value->toDateTimeString(), $granularity) : null;
-            })
-            ->filter()
-            ->countBy();
+        $resolvedLegacy = $scope(Issue::query())
+            ->whereIn('status', MetricDefinitions::allResolvedStatuses())
+            ->whereNull('resolved_at')
+            ->where('updated_at', '>=', $filters->periodStart)
+            ->where('updated_at', '<', $filters->periodEnd)
+            ->get(['updated_at'])
+            ->countBy(fn (Issue $issue) => $this->bucket($issue->updated_at, $granularity));
+
+        $resolved = $resolvedModern->merge($resolvedLegacy);
 
         $buckets = $created->keys()
             ->merge($resolved->keys())
@@ -118,6 +106,28 @@ class ResolutionMetricsQuery
             'created' => $buckets->map(fn ($bucket) => (int) ($created[$bucket] ?? 0))->all(),
             'resolved' => $buckets->map(fn ($bucket) => (int) ($resolved[$bucket] ?? 0))->all(),
         ];
+    }
+
+    /**
+     * @param  Collection<int, \Carbon\Carbon|null>  $ends
+     * @param  Collection<int, \Carbon\Carbon|null>  $starts
+     * @return Collection<int, float>
+     */
+    protected function durations(Collection $ends, Collection $starts): Collection
+    {
+        return $ends
+            ->zip($starts)
+            ->map(function ($pair) {
+                [$end, $start] = $pair;
+
+                if (! $end || ! $start) {
+                    return null;
+                }
+
+                return abs((float) $start->diffInMinutes($end)) / 60;
+            })
+            ->filter(fn ($hours) => $hours !== null && $hours >= 0)
+            ->values();
     }
 
     /**
@@ -135,14 +145,12 @@ class ResolutionMetricsQuery
         return ((float) $values[$middle - 1] + (float) $values[$middle]) / 2;
     }
 
-    protected function bucket(string $value, string $granularity): string
+    protected function bucket($value, string $granularity): string
     {
-        $date = Carbon::parse($value);
-
         return match ($granularity) {
-            'week' => $date->isoFormat('GGGG-[W]WW'),
-            'month' => $date->format('Y-m'),
-            default => $date->format('Y-m-d'),
+            'week' => $value->isoFormat('GGGG-[W]WW'),
+            'month' => $value->format('Y-m'),
+            default => $value->format('Y-m-d'),
         };
     }
 }

@@ -16,6 +16,7 @@ use App\Services\Workflow\WorkflowService;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class IssueService
 {
@@ -38,7 +39,11 @@ class IssueService
 
         $query = Issue::query()
             ->when($user, fn ($q) => $q->visibleTo($user))
-            ->with(['project', 'reporter', 'assignee', 'comments', 'attachments'])
+            // Eager load only what the list resource serializes; use counts
+            // instead of materialising every comment/attachment (avoids the
+            // N+1 and a large over-fetch on list endpoints).
+            ->with(['project', 'reporter', 'assignee'])
+            ->withCount(['comments', 'attachments'])
             ->when($filters['project_id'] ?? null, fn ($q, $v) => $q->where('project_id', $v))
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($filters['priority'] ?? null, fn ($q, $v) => $q->where('priority', $v))
@@ -127,25 +132,37 @@ class IssueService
 
     public function updateIssue(Issue $issue, array $data): Issue
     {
+        return DB::transaction(function () use ($issue, $data) {
+            $issue = Issue::query()->lockForUpdate()->findOrFail($issue->id);
 
-        $old = $issue->getOriginal();
+            // Optimistic concurrency: when the client sends the version it read,
+            // reject the write if the row was modified in the meantime.
+            if (array_key_exists('version', $data) && (int) $data['version'] !== (int) $issue->version) {
+                throw ValidationException::withMessages([
+                    'version' => 'This issue was modified by someone else. Reload it and try again.',
+                ]);
+            }
 
-        $issue->update([
-            'title' => $data['title'] ?? $issue->title,
-            'description' => $data['description'] ?? $issue->description,
-            'priority' => $data['priority'] ?? $issue->priority,
-            'severity' => $data['severity'] ?? $issue->severity,
-            'type' => $data['type'] ?? $issue->type,
-            'due_date' => $data['due_date'] ?? $issue->due_date,
-            'estimated_hours' => $data['estimated_hours'] ?? $issue->estimated_hours,
-        ]);
+            $old = $issue->getOriginal();
 
-        event(new IssueUpdated($issue->fresh(), $old, (string) Str::uuid(), auth()->id()));
+            $issue->update([
+                'title' => $data['title'] ?? $issue->title,
+                'description' => $data['description'] ?? $issue->description,
+                'priority' => $data['priority'] ?? $issue->priority,
+                'severity' => $data['severity'] ?? $issue->severity,
+                'type' => $data['type'] ?? $issue->type,
+                'due_date' => $data['due_date'] ?? $issue->due_date,
+                'estimated_hours' => $data['estimated_hours'] ?? $issue->estimated_hours,
+            ]);
 
-        $this->activityLogService->logIssueUpdated($issue, auth()->user(), $old, $issue->getAttributes());
+            $issue->increment('version');
 
-        return $issue->fresh(['project', 'reporter', 'assignee']);
+            event(new IssueUpdated($issue->fresh(), $old, (string) Str::uuid(), auth()->id()));
 
+            $this->activityLogService->logIssueUpdated($issue, auth()->user(), $old, $issue->getAttributes());
+
+            return $issue->fresh(['project', 'reporter', 'assignee']);
+        });
     }
 
     public function deleteIssue(Issue $issue): void

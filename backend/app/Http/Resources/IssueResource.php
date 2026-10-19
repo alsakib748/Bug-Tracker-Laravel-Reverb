@@ -44,6 +44,7 @@ class IssueResource extends JsonResource
             'comments_count' => $this->whenCounted('comments'),
             'attachments' => AttachmentResource::collection($this->whenLoaded('attachments')),
             'attachments_count' => $this->whenCounted('attachments'),
+            'version' => $this->version,
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];

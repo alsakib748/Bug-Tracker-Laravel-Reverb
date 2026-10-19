@@ -25,7 +25,8 @@ class InsightContextBuilder
         $github = $this->analytics->github($filters);
 
         return [
-            'project_id' => $filters->projectId,
+            'project_scope' => $filters->scopeKey(),
+            'project_ids' => $filters->projectIds,
             'insight_type' => $insightType,
             'period' => [
                 'start' => $filters->periodStart->toDateString(),

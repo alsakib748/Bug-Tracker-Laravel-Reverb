@@ -46,6 +46,33 @@ export function onRealtimeReconnect(callback) {
 }
 
 /**
+ * Subscribe to issue events for a set of projects and invoke a handler for
+ * each. Returns a function that tears down every subscription.
+ *
+ * projectIds: numeric project ids to listen on (private-project.{id}).
+ * events:     broadcast event names (e.g. "issue.created").
+ * handler:    called once per matching event.
+ */
+export function subscribeToProjects(projectIds, events, handler) {
+  if (!echo || !Array.isArray(projectIds)) return () => {}
+
+  const unsubs = projectIds
+    .filter((id) => id)
+    .map((id) => {
+      const channel = echo.private(`project.${id}`)
+
+      events.forEach((event) => channel.listen(event, handler))
+
+      return () => {
+        events.forEach((event) => channel.stopListening(event))
+        echo.leave(`project.${id}`)
+      }
+    })
+
+  return () => unsubs.forEach((unsub) => unsub())
+}
+
+/**
  * Trailing-edge debounce, used to coalesce bursts of realtime events into a
  * single refetch.
  */

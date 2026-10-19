@@ -37,5 +37,14 @@ export const useActivityLogStore = defineStore('activityLogs', {
         this.loading = false
       }
     },
+    async fetchLog(id) {
+      try {
+        const response = await api.get(`/activity-logs/${id}`)
+        return response.data.data
+      } catch (error) {
+        console.error('Failed to fetch activity log:', error)
+        throw error
+      }
+    },
   },
 })

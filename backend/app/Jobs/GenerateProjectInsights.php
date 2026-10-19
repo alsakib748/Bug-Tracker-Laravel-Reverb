@@ -59,9 +59,9 @@ class GenerateProjectInsights implements ShouldQueue
 
         try {
             $filters = new AnalyticsFilters(
-                projectId: $insight->project_id,
+                projectIds: [$insight->project_id],
                 periodStart: $insight->period_start->copy()->startOfDay(),
-                periodEnd: $insight->period_end->copy()->endOfDay(),
+                periodEnd: $insight->period_end->copy()->addDay()->startOfDay(),
                 timezone: $insight->filters['timezone'] ?? 'UTC',
             );
 

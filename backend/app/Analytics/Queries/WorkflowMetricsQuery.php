@@ -16,8 +16,12 @@ class WorkflowMetricsQuery
     public function timeInStatus(AnalyticsFilters $filters): array
     {
         $transitions = IssueStatusHistory::query()
-            ->whereHas('issue', fn ($query) => $query->where('project_id', $filters->projectId))
-            ->whereBetween('created_at', [$filters->periodStart, $filters->periodEnd])
+            ->whereHas('issue', fn ($query) => $query->when(
+                $filters->projectIds !== [],
+                fn ($q) => $q->whereIn('project_id', $filters->projectIds)
+            ))
+            ->where('created_at', '>=', $filters->periodStart)
+            ->where('created_at', '<', $filters->periodEnd)
             ->orderBy('issue_id')
             ->orderBy('created_at')
             ->get(['issue_id', 'to_status', 'created_at']);
@@ -63,9 +67,13 @@ class WorkflowMetricsQuery
     public function reopenedCount(AnalyticsFilters $filters): int
     {
         return IssueStatusHistory::query()
-            ->whereHas('issue', fn ($query) => $query->where('project_id', $filters->projectId))
+            ->whereHas('issue', fn ($query) => $query->when(
+                $filters->projectIds !== [],
+                fn ($q) => $q->whereIn('project_id', $filters->projectIds)
+            ))
             ->where('to_status', 'reopened')
-            ->whereBetween('created_at', [$filters->periodStart, $filters->periodEnd])
+            ->where('created_at', '>=', $filters->periodStart)
+            ->where('created_at', '<', $filters->periodEnd)
             ->distinct()
             ->count('issue_id');
     }

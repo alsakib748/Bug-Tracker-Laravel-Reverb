@@ -44,6 +44,7 @@ class UpdateIssueRequest extends FormRequest
             'assigned_to' => 'nullable|exists:users,id',
             'due_date' => 'nullable|date|after:today',
             'estimated_hours' => 'nullable|numeric|min:0.5|max:999',
+            'version' => 'sometimes|integer|min:0',
         ];
     }
 

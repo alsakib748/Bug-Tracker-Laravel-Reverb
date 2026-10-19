@@ -26,8 +26,8 @@ class ProjectResource extends JsonResource
             'created_by' => $this->whenLoaded('creator', fn() => new UserResource($this->creator)),
             'members' => $this->whenLoaded('members', fn() => UserResource::collection($this->members)),
             'issues_count' => $this->whenCounted('issues'),
-            'created_at' => $this->created_at->toISOString(),
-            'updated_at' => $this->updated_at->toISOString(),
+            'created_at' => $this->created_at?->toISOString(),
+            'updated_at' => $this->updated_at?->toISOString(),
         ];
     }
 }

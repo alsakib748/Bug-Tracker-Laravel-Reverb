@@ -100,6 +100,10 @@
                     <component :is="item.icon" />
                   </span>
                   <span v-if="isExpanded || isHovered || isMobileOpen" class="menu-item-text">{{ item.name }}</span>
+                  <span v-if="badgeFor(item) && (isExpanded || isHovered || isMobileOpen)"
+                    class="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-medium rounded-full bg-brand-500 text-white">
+                    {{ badgeFor(item) }}
+                  </span>
                 </router-link>
                 <transition @enter="startTransition" @after-enter="endTransition" @before-leave="startTransition"
                   @after-leave="endTransition">
@@ -164,44 +168,60 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { computed } from "vue";
 import { useRoute } from "vue-router";
 
 import {
-  GridIcon,
-  CalenderIcon,
-  UserCircleIcon,
-  ChatIcon,
-  MailIcon,
-  DocsIcon,
-  PieChartIcon,
-  ChevronDownIcon,
-  HorizontalDots,
-  PageIcon,
+  LayoutDashboardIcon,
+  UserGroupIcon,
+  TaskIcon,
   TableIcon,
   ListIcon,
+  BellIcon,
+  ChatIcon,
+  PieChartIcon,
   PlugInIcon,
+  SettingsIcon,
+  ChevronDownIcon,
+  HorizontalDots,
 } from "../../icons";
 import SidebarWidget from "./SidebarWidget.vue";
-import BoxCubeIcon from "@/icons/BoxCubeIcon.vue";
 import { useSidebar } from "@/composables/useSidebar";
 import { useAuthStore } from "@/stores/auth";
+import { useNotificationStore } from "@/stores/notifications";
 
 const route = useRoute();
 const auth = useAuthStore();
+const notificationStore = useNotificationStore();
 
 const { isExpanded, isMobileOpen, isHovered, openSubmenu } = useSidebar();
 
 const baseMenuGroups = [
   {
-    title: "Menu",
+    title: "Overview",
     items: [
       {
-        icon: GridIcon,
+        icon: LayoutDashboardIcon,
         name: "Dashboard",
-        path: "/",
+        path: "/dashboard",
         permission: "view dashboard",
-        // subItems: [{ name: "Ecommerce", path: "/", pro: false }],
+      },
+    ],
+  },
+  {
+    title: "Work Management",
+    items: [
+      {
+        icon: UserGroupIcon,
+        name: "Projects",
+        path: "/projects",
+        permission: "view projects",
+      },
+      {
+        icon: TaskIcon,
+        name: "Issues",
+        permission: "view issues",
+        subItems: [{ name: "All Issues", path: "/issues", pro: false }],
       },
       {
         icon: TableIcon,
@@ -211,27 +231,38 @@ const baseMenuGroups = [
       },
       {
         icon: ListIcon,
-        name: "Backlog",
+        name: "Backlog & Sprints",
         path: "/backlog",
         permission: "view backlog",
       },
+    ],
+  },
+  {
+    title: "Collaboration",
+    items: [
       {
-        icon: GridIcon,
-        name: "Project",
-        path: "/projects",
-        permission: "view projects",
+        icon: BellIcon,
+        name: "Notifications",
+        path: "/notifications",
+        permission: "view notifications",
+        badge: "unread",
       },
       {
-        icon: GridIcon,
-        name: "Issues",
-        path: "/issues",
-        permission: "view issues",
+        icon: ChatIcon,
+        name: "Activity Logs",
+        path: "/activity-logs",
+        permission: "view activity logs",
       },
+    ],
+  },
+  {
+    title: "Insights & Integrations",
+    items: [
       {
-        icon: PlugInIcon,
-        name: "Automation",
-        path: "/automation",
-        permission: "view automation rules",
+        icon: PieChartIcon,
+        name: "Analytics",
+        path: "/analytics",
+        permission: "view analytics",
       },
       {
         icon: PlugInIcon,
@@ -240,60 +271,67 @@ const baseMenuGroups = [
         permission: "view github integration",
       },
       {
-        icon: PieChartIcon,
-        name: "Analytics",
-        path: "/analytics",
-        permission: "view analytics",
+        icon: PlugInIcon,
+        name: "Automations",
+        path: "/automation",
+        permission: "view automation rules",
       },
+    ],
+  },
+  {
+    title: "Administration",
+    items: [
       {
-        icon: GridIcon,
-        name: "Notifications",
-        path: "/notifications",
-        permission: "view notifications",
-      },
-      // {
-      //   icon: GridIcon,
-      //   name: "Profile",
-      //   path: "/profile",
-      // },
-      {
-        icon: GridIcon,
-        name: "Activity Logs",
-        path: "/activity-logs",
-        permission: "view activity logs",
-      },
-      {
-        icon: GridIcon,
+        icon: UserGroupIcon,
         name: "Users",
         path: "/users",
         permission: "view users",
       },
       {
-        icon: UserCircleIcon,
+        icon: SettingsIcon,
         name: "Roles & Permissions",
         path: "/roles",
         permission: "manage roles",
       },
-      // {
-      //   name: "Settings",
-      //   icon: GridIcon,
-      //   subItems: [
-      //     { name: "Profile", path: "/profile", pro: false },
-      //     { name: "Activity Logs", path: "/activity-logs", pro: false },
-      //   ],
-      // }
+      {
+        icon: SettingsIcon,
+        name: "Settings",
+        subItems: [
+          { name: "Profile", path: "/profile", pro: false },
+          { name: "Activity Logs", path: "/activity-logs", pro: false },
+        ],
+      },
     ],
-  }
+  },
 ];
 
+const canSeeItem = (item) => !item.permission || auth.hasPermission(item.permission);
+const canSeeSubItem = (subItem) =>
+  !subItem.permission || auth.hasPermission(subItem.permission);
+
 const menuGroups = computed(() =>
-  baseMenuGroups.map((group) => ({
-    ...group,
-    items: group.items.filter(
-      (item) => !item.permission || auth.hasPermission(item.permission)
-    ),
-  }))
+  baseMenuGroups
+    .map((group) => ({
+      ...group,
+      items: group.items
+        .filter(canSeeItem)
+        .map((item) =>
+          item.subItems
+            ? { ...item, subItems: item.subItems.filter(canSeeSubItem) }
+            : item
+        )
+        .filter((item) => !item.subItems || item.subItems.length > 0),
+    }))
+    .filter((group) => group.items.length > 0)
 );
+
+const badgeFor = (item) => {
+  if (item.badge === "unread") {
+    const count = notificationStore.unreadCount;
+    return count > 0 ? (count > 99 ? "99+" : String(count)) : null;
+  }
+  return null;
+};
 
 const isActive = (path) => route.path === path;
 

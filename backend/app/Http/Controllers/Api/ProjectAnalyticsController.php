@@ -19,7 +19,7 @@ class ProjectAnalyticsController extends Controller
     {
         $this->authorize('view', $project);
 
-        $filters = AnalyticsFilters::fromRequest($request, $project->id);
+        $filters = AnalyticsFilters::forProject($request, $project->id);
 
         return response()->json($this->analytics->overview($filters));
     }
@@ -28,7 +28,7 @@ class ProjectAnalyticsController extends Controller
     {
         $this->authorize('view', $project);
 
-        $filters = AnalyticsFilters::fromRequest($request, $project->id);
+        $filters = AnalyticsFilters::forProject($request, $project->id);
 
         return response()->json(
             $this->analytics->trends($filters, (string) $request->input('granularity', 'day'))
@@ -39,7 +39,7 @@ class ProjectAnalyticsController extends Controller
     {
         $this->authorize('view', $project);
 
-        $filters = AnalyticsFilters::fromRequest($request, $project->id);
+        $filters = AnalyticsFilters::forProject($request, $project->id);
 
         return response()->json($this->analytics->workflow($filters));
     }
@@ -48,7 +48,7 @@ class ProjectAnalyticsController extends Controller
     {
         $this->authorize('view', $project);
 
-        $filters = AnalyticsFilters::fromRequest($request, $project->id);
+        $filters = AnalyticsFilters::forProject($request, $project->id);
 
         return response()->json($this->analytics->github($filters));
     }

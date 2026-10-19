@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ActivityLogResource;
 use App\Models\ActivityLog;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class ActivityLogController extends Controller
@@ -36,6 +37,53 @@ class ActivityLogController extends Controller
         $logs = $query->paginate($request->get('per_page', 20));
 
         return ActivityLogResource::collection($logs);
+    }
+
+    /**
+     * Distinct users who appear in activity logs the current user can see.
+     * Used by the activity filter dropdown. Scoped by visibility (not the
+     * admin-only "view users" permission), so lower roles (e.g. Viewer) can
+     * filter their own logs without gaining directory access.
+     */
+    public function users(Request $request)
+    {
+        $this->authorize('viewAny', ActivityLog::class);
+
+        $users = User::query()
+            ->whereHas('activityLogs', function ($q) use ($request) {
+                $this->scopeByVisibility($q, $request);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'avatar'])
+            ->map(fn ($user) => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'avatar' => $user->avatar,
+            ]);
+
+        return response()->json(['data' => $users]);
+    }
+
+    protected function scopeByVisibility($query, Request $request)
+    {
+        $user = $request->user();
+
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if ($user->isAdmin()) {
+            return $query;
+        }
+
+        return $query->where(function ($inner) use ($user) {
+            $inner->whereHas('project', function ($q) use ($user) {
+                $q->visibleTo($user);
+            })
+            ->orWhereHas('issue.project', function ($q) use ($user) {
+                $q->visibleTo($user);
+            });
+        });
     }
 
     public function show(ActivityLog $activityLog)

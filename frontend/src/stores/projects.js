@@ -19,8 +19,13 @@ export const useProjectStore = defineStore('projects', {
 
       try {
         const response = await api.get('/projects', { params })
-        this.projects = response.data.data
-        this.pagination.total = this.projects.length
+        this.projects = response.data.data || []
+        this.pagination = {
+          current_page: response.data.current_page || 1,
+          last_page: response.data.last_page || 1,
+          per_page: response.data.per_page || 10,
+          total: response.data.total || 0,
+        }
         return response.data
       } catch (error) {
         console.error('Failed to fetch projects: ', error)

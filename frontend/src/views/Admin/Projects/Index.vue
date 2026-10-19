@@ -17,8 +17,9 @@
         <!-- <pre>
           {{ projects }}
         </pre> -->
-        <DataTable :value="projects" :loading="loading" paginator :rows="10" :rowsPerPageOptions="[5, 10, 20, 50]"
-          v-model:filters="filters" filterDisplay="menu" tableStyle="min-width: 50rem" responsiveLayout="scroll"
+        <DataTable :value="projects" :loading="loading" paginator :rows="pagination.per_page" :totalRecords="pagination.total"
+          :first="(pagination.current_page - 1) * pagination.per_page" :rowsPerPageOptions="[5, 10, 20, 50]"
+          @page="onPageChange" v-model:filters="filters" filterDisplay="menu" tableStyle="min-width: 50rem" responsiveLayout="scroll"
           class="p-4">
 
           <Column field="name" header="Name" sortable filter>
@@ -73,6 +74,7 @@
 
 <script setup>
 import { ref, onMounted, reactive } from "vue";
+import { storeToRefs } from 'pinia';
 import { useProjectStore } from "@/stores/projects";
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -90,8 +92,7 @@ const currentPageTitle = ref("Project List");
 
 const projectStore = useProjectStore();
 
-const projects = ref([]);
-const loading = ref(false);
+const { projects, loading, pagination } = storeToRefs(projectStore);
 
 const filters = reactive({
   global: {
@@ -102,17 +103,24 @@ const filters = reactive({
 
 
 
-const fetchAll = async () => {
+const lastParams = ref({ page: 1, per_page: 10 });
+
+const fetchAll = async (params = {}) => {
   loading.value = true;
   try {
-    await projectStore.fetchAllProjects();
-    projects.value = projectStore.projects;
+    const merged = { page: 1, per_page: 10, ...lastParams.value, ...params };
+    lastParams.value = merged;
+    await projectStore.fetchAllProjects(merged);
   } catch (error) {
     console.error('Project List Error', error);
   } finally {
     loading.value = false;
   }
 }
+
+const onPageChange = (event) => {
+  fetchAll({ page: event.page + 1, per_page: event.rows });
+};
 
 const confirmDelete = async (project) => {
   const result = await Swal.fire({
@@ -129,7 +137,7 @@ const confirmDelete = async (project) => {
   if (result.isConfirmed) {
     try {
       await projectStore.deleteProject(project.id);
-      await fetchAll();
+      await fetchAll(lastParams.value);
       Swal.fire(
         'Deleted!',
         `"${project.name}" has been deleted.`,

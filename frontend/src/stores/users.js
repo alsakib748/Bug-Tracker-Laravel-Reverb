@@ -34,6 +34,20 @@ export const useUserStore = defineStore('users', {
         this.loading = false
       }
     },
+    /**
+     * Minimal, permission-light list of users for filtering activity logs.
+     * Backed by /activity-logs/users, which authorizes on "view activity logs"
+     * rather than the admin-only "view users" permission.
+     */
+    async fetchActivityFilterUsers() {
+      try {
+        const response = await api.get('/activity-logs/users')
+        return response.data.data || []
+      } catch (error) {
+        console.error('Failed to fetch activity filter users:', error)
+        throw error
+      }
+    },
     async fetchUser(id) {
       this.loading = true
       try {

@@ -12,6 +12,7 @@ use App\Models\Issue;
 use App\Models\Project;
 use App\Services\IssueService;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class IssueController extends Controller
 {
@@ -93,6 +94,8 @@ class IssueController extends Controller
             $updated = $this->issueService->updateIssue($issue, $request->validated());
 
             return new IssueResource($updated);
+        } catch (ValidationException $e) {
+            throw $e;
         } catch (\Exception $e) {
             return response()->json(['message' => $e->getMessage()], 422);
         }

@@ -21,7 +21,10 @@
             placeholder="Priority" clearable @change="applyFilters" />
         </div>
 
-        <DataTable :value="issues" :loading="loading" paginator :rows="pagination.per_page"
+        <div v-if="loading" class="p-4">
+          <AppSkeleton class="space-y-3" />
+        </div>
+        <DataTable v-else :value="issues" paginator :rows="pagination.per_page"
           :totalRecords="pagination.total" :first="(pagination.current_page - 1) * pagination.per_page"
           :rowsPerPageOptions="[5, 10, 20, 50]"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
@@ -88,8 +91,10 @@
 import AdminLayout from '@/components/layout/AdminLayout.vue';
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
 import ComponentCard from '@/components/common/ComponentCard.vue';
+import AppSkeleton from '@/components/common/AppSkeleton.vue';
 
 import { ref, onMounted, onUnmounted, reactive } from 'vue';
+import { useRoute } from 'vue-router';
 import { useIssueStore } from '@/stores/issues';
 import { useProjectStore } from '@/stores/projects';
 import echo from '@/services/echo';
@@ -107,6 +112,7 @@ import { usePermissions } from '@/composables/usePermissions';
 const { can } = usePermissions();
 
 const issueStore = useIssueStore();
+const route = useRoute();
 
 const { issues, loading, pagination } = storeToRefs(issueStore);
 
@@ -124,6 +130,12 @@ const filters = reactive({
   status: null,
   priority: null,
 });
+
+// Seed from the query string so dashboard drill-downs arrive pre-filtered.
+if (route.query.project_id) filters.project_id = Number(route.query.project_id);
+if (route.query.status) filters.status = String(route.query.status);
+if (route.query.priority) filters.priority = String(route.query.priority);
+if (route.query.search) filters.search = String(route.query.search);
 
 const statusOptions = [
   { label: 'Open', value: 'open' },
@@ -261,8 +273,14 @@ const confirmDelete = async (issue) => {
 let removeReconnectListener = null;
 
 onMounted(() => {
+  // Seed filters from the query string so dashboard drill-downs arrive pre-filtered.
+  if (route.query.project_id) filters.project_id = Number(route.query.project_id) || null;
+  if (route.query.status) filters.status = String(route.query.status);
+  if (route.query.priority) filters.priority = String(route.query.priority);
+  if (route.query.search) filters.search = String(route.query.search);
+
   loadProjects();
-  fetchIssues();
+  fetchIssues({ page: 1, per_page: 10, ...filters });
   removeReconnectListener = onRealtimeReconnect(refreshFromRealtime);
 });
 
