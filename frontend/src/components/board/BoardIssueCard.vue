@@ -1,32 +1,29 @@
 <template>
   <div
-    class="cursor-grab rounded-lg border border-gray-200 bg-white p-3 shadow-sm transition hover:shadow-md active:cursor-grabbing dark:border-gray-700 dark:bg-gray-800"
+    class="cursor-grab rounded-card border border-line bg-surface p-3 shadow-theme-xs transition hover:border-brand-300 hover:shadow-theme-sm active:cursor-grabbing dark:hover:border-brand-500/40"
     @click="$emit('click', issue)"
   >
     <div class="flex items-center justify-between gap-2">
-      <span class="font-mono text-xs text-gray-400">{{ issue.issue_key }}</span>
+      <span class="font-mono text-xs text-gray-400 dark:text-gray-500">{{ issue.issue_key }}</span>
       <span
         v-if="issue.story_points"
-        class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-semibold text-blue-700"
+        class="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700 dark:bg-brand-500/15 dark:text-brand-300"
       >
         {{ issue.story_points }} SP
       </span>
     </div>
 
-    <p class="mt-1 text-sm font-medium text-gray-800 dark:text-gray-100">
+    <p class="mt-1 text-sm font-medium text-ink dark:text-gray-100">
       {{ issue.title }}
     </p>
 
     <div class="mt-2 flex items-center justify-between gap-2">
-      <span
-        class="rounded-full px-2 py-0.5 text-xs font-semibold"
-        :class="priorityClass"
-      >
+      <AppBadge size="sm" :color="priorityBadgeColor(issue.priority)">
         {{ issue.priority_label }}
-      </span>
+      </AppBadge>
       <span
         v-if="issue.assignee"
-        class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-500 text-xs font-semibold text-white"
+        class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-xs font-semibold text-white"
         :title="issue.assignee.name"
       >
         {{ initials(issue.assignee.name) }}
@@ -47,24 +44,14 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import AppBadge from '@/components/ui/AppBadge.vue'
+import { priorityBadgeColor } from '@/utils/issueMeta'
 
-const props = defineProps({
+defineProps({
   issue: { type: Object, required: true },
 })
 
 defineEmits(['click'])
-
-const PRIORITY_CLASS = {
-  low: 'bg-gray-100 text-gray-700',
-  medium: 'bg-blue-100 text-blue-700',
-  high: 'bg-orange-100 text-orange-700',
-  critical: 'bg-red-100 text-red-700',
-}
-
-const priorityClass = computed(
-  () => PRIORITY_CLASS[props.issue.priority] || 'bg-gray-100 text-gray-700',
-)
 
 const initials = (name) =>
   (name || '')

@@ -1,48 +1,62 @@
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
-    <h2 class="text-xl font-semibold text-gray-800 dark:text-white/90" x-text="pageTitle">
-      {{ pageTitle }}
-    </h2>
-    <nav>
-      <ol class="flex items-center gap-1.5">
-        <li>
-          <router-link
-            class="inline-flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400"
-            to="/"
-          >
-            Home
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
+    <div class="min-w-0">
+      <h1 class="text-page-title font-semibold text-ink dark:text-white/90">{{ pageTitle }}</h1>
+      <p v-if="description" class="mt-1 text-sm text-ink-muted dark:text-gray-400">
+        {{ description }}
+      </p>
+    </div>
+    <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <slot name="actions" />
+      <nav aria-label="Breadcrumb">
+        <ol class="flex flex-wrap items-center gap-1.5 text-sm">
+          <li v-for="(crumb, index) in trail" :key="index" class="flex items-center gap-1.5">
             <svg
-              class="stroke-current"
+              v-if="index > 0"
+              class="stroke-current shrink-0 text-gray-400 dark:text-gray-500"
               width="17"
               height="16"
               viewBox="0 0 17 16"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
+              aria-hidden="true"
             >
               <path
                 d="M6.0765 12.667L10.2432 8.50033L6.0765 4.33366"
-                stroke=""
                 stroke-width="1.2"
                 stroke-linecap="round"
                 stroke-linejoin="round"
               />
             </svg>
-          </router-link>
-        </li>
-        <li class="text-sm text-gray-800 dark:text-white/90">
-          {{ pageTitle }}
-        </li>
-      </ol>
-    </nav>
+            <router-link
+              v-if="crumb.to"
+              :to="crumb.to"
+              class="text-ink-muted transition-colors hover:text-ink dark:text-gray-400 dark:hover:text-white/90"
+            >
+              {{ crumb.label }}
+            </router-link>
+            <span v-else class="font-medium text-ink dark:text-white/90" aria-current="page">
+              {{ crumb.label }}
+            </span>
+          </li>
+        </ol>
+      </nav>
+    </div>
   </div>
 </template>
 
-<script setup lang="ts">
-import { defineProps } from 'vue'
+<script setup>
+import { computed } from 'vue'
 
-interface BreadcrumbProps {
-  pageTitle: string
-}
+const props = defineProps({
+  pageTitle: { type: String, required: true },
+  description: { type: String, default: '' },
+  breadcrumbs: { type: Array, default: () => [] },
+})
 
-defineProps<BreadcrumbProps>()
+const trail = computed(() => [
+  { label: 'Home', to: '/' },
+  ...props.breadcrumbs,
+  { label: props.pageTitle },
+])
 </script>

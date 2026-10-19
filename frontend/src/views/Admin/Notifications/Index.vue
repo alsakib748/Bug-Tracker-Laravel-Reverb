@@ -1,15 +1,16 @@
 <template>
   <AdminLayout>
-    <PageBreadcrumb :pageTitle="pageTitle" />
+    <PageBreadcrumb
+      :pageTitle="pageTitle"
+      description="Read and manage notifications from across your projects."
+    />
     <div class="space-y-5 sm:space-y-6">
       <ComponentCard title="All Notifications">
-        <div class="flex justify-between mb-4">
-          <div class="text-sm text-gray-500">
-            {{ unreadCount }} unread
-          </div>
-          <button v-if="unreadCount > 0" @click="markAllRead" class="text-blue-600 hover:underline text-sm">
-            Mark all as read
-          </button>
+        <div class="mb-4 flex justify-between">
+          <div class="text-sm text-ink-muted dark:text-gray-400">{{ unreadCount }} unread</div>
+          <AppButton v-if="unreadCount > 0" size="sm" variant="ghost" :onClick="markAllRead">
+            <span class="text-blue-600 hover:underline">Mark all as read</span>
+          </AppButton>
         </div>
         <NotificationList @navigate="handleNavigate" />
       </ComponentCard>
@@ -18,33 +19,34 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
-import { useNotificationStore } from '@/stores/notifications';
-import { useRouter } from 'vue-router';
-import { storeToRefs } from 'pinia';
-import AdminLayout from '@/components/layout/AdminLayout.vue';
-import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue';
-import ComponentCard from '@/components/common/ComponentCard.vue';
-import NotificationList from '@/components/notifications/NotificationList.vue';
+import { ref, onMounted, computed } from 'vue'
+import { useNotificationStore } from '@/stores/notifications'
+import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import AdminLayout from '@/components/layout/AdminLayout.vue'
+import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
+import ComponentCard from '@/components/common/ComponentCard.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import NotificationList from '@/components/notifications/NotificationList.vue'
 
-const pageTitle = ref('Notifications');
-const notificationStore = useNotificationStore();
-const router = useRouter();
+const pageTitle = ref('Notifications')
+const notificationStore = useNotificationStore()
+const router = useRouter()
 
-const { unreadCount } = storeToRefs(notificationStore);
+const { unreadCount } = storeToRefs(notificationStore)
 // const unreadCount = computed(() => notificationStore.unreadCount);
 
 const loadNotifications = async () => {
-  await notificationStore.fetchNotifications(1);
-};
+  await notificationStore.fetchNotifications(1)
+}
 
 const markAllRead = async () => {
-  await notificationStore.markAllAsRead();
-};
+  await notificationStore.markAllAsRead()
+}
 
 const handleNavigate = (url) => {
-  router.push(url);
-};
+  router.push(url)
+}
 
-onMounted(loadNotifications);
+onMounted(loadNotifications)
 </script>

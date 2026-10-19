@@ -1,6 +1,9 @@
 <template>
   <AdminLayout>
-    <PageBreadcrumb page-title="Dashboard" />
+    <PageBreadcrumb
+      page-title="Dashboard"
+      description="Project health, workload, and what needs your attention."
+    />
 
     <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
       <p v-if="store.data.period" class="text-sm text-gray-500 dark:text-gray-400">
@@ -14,22 +17,22 @@
         :disabled="store.loading"
         @click="refresh"
       >
-          <svg
-            class="h-4 w-4"
-            :class="{ 'animate-spin': store.loading }"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M23 4v6h-6" />
-            <path d="M1 20v-6h6" />
-            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10" />
-            <path d="M23 14a9 9 0 0 1-14.85 3.36L1 14" />
-          </svg>
-          Refresh
+        <svg
+          class="h-4 w-4"
+          :class="{ 'animate-spin': store.loading }"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M23 4v6h-6" />
+          <path d="M1 20v-6h6" />
+          <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10" />
+          <path d="M23 14a9 9 0 0 1-14.85 3.36L1 14" />
+        </svg>
+        Refresh
       </button>
     </div>
 
@@ -82,7 +85,7 @@
             label="Overdue"
             :value="store.data.summary.overdue_issues"
             tone="danger"
-            :to="{ name: 'IssuesIndex' }"
+            :to="{ name: 'IssuesIndex', query: { view: 'overdue' } }"
           />
           <KpiCard
             label="Critical open"
@@ -199,11 +202,7 @@ const listenToScope = () => {
 
 // Re-subscribe whenever the filter scope (or the project list it may fall back
 // to) changes, so live updates keep matching the numbers on screen.
-watch(
-  () => [store.filters?.project_ids, projectStore.projects],
-  listenToScope,
-  { deep: true },
-)
+watch(() => [store.filters?.project_ids, projectStore.projects], listenToScope, { deep: true })
 
 onMounted(async () => {
   try {

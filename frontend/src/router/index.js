@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
 import Login from '@/views/Auth/Signin.vue'
-import Signup from '@/views/Auth/Signup.vue'
+// import Signup from '@/views/Auth/Signup.vue'
 import Dashboard from '@/views/Admin/Dashboard/DashboardPage.vue'
 import NotFound from '@/views/Errors/FourZeroFour.vue'
 import Forbidden from '@/views/Errors/Forbidden.vue'
@@ -60,12 +60,12 @@ const routes = [
     component: Login,
     meta: { guest: true },
   },
-  {
-    path: '/signup',
-    name: 'Signup',
-    component: Signup,
-    meta: { guest: true },
-  },
+  // {
+  //   path: '/signup',
+  //   name: 'Signup',
+  //   component: Signup,
+  //   meta: { guest: true },
+  // },
   {
     path: '/dashboard',
     name: 'Dashboard',

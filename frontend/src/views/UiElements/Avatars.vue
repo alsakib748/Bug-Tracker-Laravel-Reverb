@@ -32,7 +32,7 @@
   </AdminLayout>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
@@ -41,5 +41,5 @@ import Avatar from '@/components/ui/Avatar.vue'
 const currentPageTitle = ref('Avatars')
 
 const avatarSrc = '/images/user/user-01.jpg'
-const sizes = ['xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge'] as const
+const sizes = ['xsmall', 'small', 'medium', 'large', 'xlarge', 'xxlarge']
 </script>

@@ -10,11 +10,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
-interface ModalProps {
-  fullScreenBackdrop?: boolean
-}
-
-defineProps<ModalProps>()
+<script setup>
+defineProps({ fullScreenBackdrop: { type: Boolean, default: false } })
 defineEmits(['close'])
 </script>

@@ -20,11 +20,13 @@ export const useProjectStore = defineStore('projects', {
       try {
         const response = await api.get('/projects', { params })
         this.projects = response.data.data || []
+        // ResourceCollection + paginator nests paging under `meta`
+        const meta = response.data.meta || response.data
         this.pagination = {
-          current_page: response.data.current_page || 1,
-          last_page: response.data.last_page || 1,
-          per_page: response.data.per_page || 10,
-          total: response.data.total || 0,
+          current_page: meta.current_page || 1,
+          last_page: meta.last_page || 1,
+          per_page: meta.per_page || 10,
+          total: meta.total || 0,
         }
         return response.data
       } catch (error) {

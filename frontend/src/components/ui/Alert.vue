@@ -24,23 +24,17 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { SuccessIcon, ErrorIcon, WarningIcon, InfoCircleIcon } from '@/icons'
 import { computed } from 'vue'
 
-interface AlertProps {
-  variant: 'success' | 'error' | 'warning' | 'info'
-  title: string
-  message: string
-  showLink?: boolean
-  linkHref?: string
-  linkText?: string
-}
-
-const props = withDefaults(defineProps<AlertProps>(), {
-  showLink: false,
-  linkHref: '#',
-  linkText: 'Learn more',
+const props = defineProps({
+  variant: { type: String, required: true },
+  title: { type: String, required: true },
+  message: { type: String, required: true },
+  showLink: { type: Boolean, default: false },
+  linkHref: { type: String, default: '#' },
+  linkText: { type: String, default: 'Learn more' },
 })
 
 const variantClasses = {

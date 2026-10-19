@@ -23,11 +23,13 @@ export const useActivityLogStore = defineStore('activityLogs', {
           params: { ...filters, page },
         })
         this.logs = response.data.data
+        // ResourceCollection + paginator nests paging under `meta`
+        const meta = response.data.meta || response.data
         this.pagination = {
-          current_page: response.data.current_page,
-          last_page: response.data.last_page,
-          per_page: response.data.per_page,
-          total: response.data.total,
+          current_page: meta.current_page || 1,
+          last_page: meta.last_page || 1,
+          per_page: meta.per_page || 20,
+          total: meta.total || 0,
         }
         return response.data
       } catch (error) {

@@ -4,8 +4,19 @@
       <div
         class="relative flex flex-col justify-center w-full h-screen lg:flex-row dark:bg-gray-900"
       >
-        <div class="flex flex-col flex-1 w-full lg:w-1/2">
-          <div class="flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
+        <div class="relative flex flex-col flex-1 w-full overflow-hidden lg:w-1/2">
+          <div class="pointer-events-none absolute inset-0" aria-hidden="true">
+            <div
+              class="absolute -left-20 -top-24 h-80 w-80 rounded-full bg-brand-500/10 blur-3xl dark:bg-brand-500/[0.06]"
+            ></div>
+            <div
+              class="absolute -bottom-28 -right-24 h-96 w-96 rounded-full bg-theme-purple-500/10 blur-3xl dark:bg-theme-purple-500/[0.06]"
+            ></div>
+            <div
+              class="absolute inset-0 bg-[radial-gradient(circle,rgba(70,95,255,0.08)_1px,transparent_1px)] opacity-60 [background-size:22px_22px] dark:opacity-40"
+            ></div>
+          </div>
+          <div class="relative z-10 flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
             <div>
               <div class="mb-5 sm:mb-8">
                 <router-link to="/" class="mb-6 flex justify-center">
@@ -174,7 +185,7 @@
                     </div>
                   </div>
                 </form>
-                <div class="mt-5">
+                <!-- <div class="mt-5">
                   <p
                     class="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start"
                   >
@@ -185,22 +196,12 @@
                       >Sign Up</router-link
                     >
                   </p>
-                </div>
+                </div> -->
               </div>
             </div>
           </div>
         </div>
-        <!-- <div class="relative items-center hidden w-full h-full lg:w-1/2 bg-brand-950 dark:bg-white/5 lg:grid">
-          <div class="flex items-center justify-center z-1">
-            <common-grid-shape />
-            <div class="flex flex-col items-center max-w-xs">
-              <router-link to="/" class="block mb-4">
-                <img width="220" height="40" src="/images/logo/auth-logo.svg" alt="Traceflow" />
-              </router-link>
-              <p class="text-center text-gray-400 dark:text-white/60">From issue to insight.</p>
-            </div>
-          </div>
-        </div> -->
+        <AuthBrandPanel />
       </div>
     </div>
   </FullScreenLayout>
@@ -210,7 +211,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
-import CommonGridShape from '@/components/common/CommonGridShape.vue'
+import AuthBrandPanel from '@/components/auth/AuthBrandPanel.vue'
 import FullScreenLayout from '@/components/layout/FullScreenLayout.vue'
 import { toast } from 'vue3-toastify'
 

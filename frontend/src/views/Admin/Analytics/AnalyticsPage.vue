@@ -4,12 +4,23 @@
 
     <div class="space-y-5 sm:space-y-6">
       <!-- Filters -->
-      <ComponentCard title="Filters" desc="Metrics are always computed from the database for the selected period.">
+      <ComponentCard
+        title="Filters"
+        desc="Metrics are always computed from the database for the selected period."
+      >
         <div class="flex flex-wrap items-end gap-3">
           <div>
             <label class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Project</label>
-            <Select v-model="projectId" :options="projects" optionLabel="name" optionValue="id" filter
-              placeholder="Select a project" class="w-56" @change="load" />
+            <Select
+              v-model="projectId"
+              :options="projects"
+              optionLabel="name"
+              optionValue="id"
+              filter
+              placeholder="Select a project"
+              class="w-56"
+              @change="load"
+            />
           </div>
           <div>
             <label class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Start</label>
@@ -20,22 +31,23 @@
             <DatePicker v-model="end" dateFormat="yy-mm-dd" showIcon class="w-44" />
           </div>
           <div>
-            <label class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Trend granularity</label>
+            <label class="block mb-1 text-xs text-gray-600 dark:text-gray-400"
+              >Trend granularity</label
+            >
             <Select v-model="granularity" :options="granularities" class="w-36" />
           </div>
-          <button class="px-4 py-2 text-white bg-blue-600 rounded-md disabled:opacity-50" :disabled="!projectId"
-            @click="load">
-            Apply
-          </button>
+          <AppButton size="sm" :disabled="!projectId" :onClick="load">Apply</AppButton>
         </div>
       </ComponentCard>
 
-      <div v-if="!projectId" class="text-sm text-gray-500">
-        Select a project to view its analytics and generate AI insights.
-      </div>
+      <EmptyState
+        v-if="!projectId"
+        title="No project selected"
+        description="Select a project to view its analytics and generate AI insights."
+      />
 
       <div v-else-if="store.loading" class="py-8 text-center">
-        <i class="text-2xl text-blue-600 pi pi-spin pi-spinner"></i>
+        <AppSkeleton :rows="6" />
       </div>
 
       <template v-else-if="store.overview">
@@ -46,33 +58,56 @@
           <StatCard label="Created (period)" :value="store.overview.summary.created_in_period" />
           <StatCard label="Resolved (period)" :value="store.overview.summary.resolved_in_period" />
           <StatCard label="Overdue" :value="store.overview.summary.overdue_issues" tone="danger" />
-          <StatCard label="Critical open" :value="store.overview.summary.critical_open_issues" tone="danger" />
+          <StatCard
+            label="Critical open"
+            :value="store.overview.summary.critical_open_issues"
+            tone="danger"
+          />
         </div>
 
         <!-- GitHub development velocity (facts only) -->
-        <ComponentCard title="GitHub development velocity"
-          desc="Computed from stored pull requests and commits. GitHub provides the facts; the AI only explains them.">
+        <ComponentCard
+          title="GitHub development velocity"
+          desc="Computed from stored pull requests and commits. GitHub provides the facts; the AI only explains them."
+        >
           <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <StatCard label="Time to first PR"
+            <StatCard
+              label="Time to first PR"
               :value="store.github?.time_to_first_pr?.median_hours ?? '—'"
-              :hint="`median hours · ${store.github?.time_to_first_pr?.sample_size ?? 0} issues`" />
-            <StatCard label="PRs awaiting review"
+              :hint="`median hours · ${store.github?.time_to_first_pr?.sample_size ?? 0} issues`"
+            />
+            <StatCard
+              label="PRs awaiting review"
               :value="store.github?.prs_awaiting_review?.count ?? 0"
               :tone="(store.github?.prs_awaiting_review?.count ?? 0) > 3 ? 'danger' : 'default'"
-              :hint="`open for more than ${store.github?.prs_awaiting_review?.threshold_hours ?? 24} h`" />
-            <StatCard label="Median PR merge"
+              :hint="`open for more than ${store.github?.prs_awaiting_review?.threshold_hours ?? 24} h`"
+            />
+            <StatCard
+              label="Median PR merge"
               :value="store.github?.pr_merge_duration?.median_hours ?? '—'"
-              :hint="`median hours · ${store.github?.pr_merge_duration?.sample_size ?? 0} merged`" />
-            <StatCard label="Issues without PR"
+              :hint="`median hours · ${store.github?.pr_merge_duration?.sample_size ?? 0} merged`"
+            />
+            <StatCard
+              label="Issues without PR"
               :value="store.github?.issues_without_pr ?? 0"
-              hint="open issues not yet linked to a PR" />
+              hint="open issues not yet linked to a PR"
+            />
           </div>
 
-          <div v-if="store.github?.pr_throughput?.buckets?.length"
-            class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
-            <VueApexCharts type="bar" height="260" :options="githubChartOptions" :series="githubChartSeries" />
+          <div
+            v-if="store.github?.pr_throughput?.buckets?.length"
+            class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800"
+          >
+            <VueApexCharts
+              type="bar"
+              height="260"
+              :options="githubChartOptions"
+              :series="githubChartSeries"
+            />
           </div>
-          <p v-else class="mt-4 text-xs text-gray-500">No pull request activity in this period.</p>
+          <p v-else class="mt-4 text-xs text-gray-500 dark:text-gray-400">
+            No pull request activity in this period.
+          </p>
         </ComponentCard>
 
         <!-- GitHub health AI insight -->
@@ -83,16 +118,21 @@
           <ComponentCard title="Median resolution time">
             <p class="text-3xl font-bold text-gray-800 dark:text-white/90">
               {{ store.overview.resolution.median_hours ?? '—' }}
-              <span v-if="store.overview.resolution.median_hours"
-                class="text-sm font-normal text-gray-500">hours</span>
+              <span
+                v-if="store.overview.resolution.median_hours"
+                class="text-sm font-normal text-gray-500 dark:text-gray-400"
+                >hours</span
+              >
             </p>
-            <p class="mt-1 text-xs text-gray-500">
-              Based on {{ store.overview.resolution.sample_size }} resolved issues
-              ({{ store.overview.resolution.coverage }} coverage)
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Based on {{ store.overview.resolution.sample_size }} resolved issues ({{
+                store.overview.resolution.coverage
+              }}
+              coverage)
             </p>
 
             <div class="pt-4 mt-4 border-t border-gray-100 dark:border-gray-800">
-              <p class="text-xs text-gray-500">Reopened in period</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400">Reopened in period</p>
               <p class="text-xl font-semibold text-gray-800 dark:text-white/90">
                 {{ store.workflow?.reopened_count ?? 0 }}
               </p>
@@ -109,33 +149,55 @@
           <!-- Status distribution -->
           <ComponentCard title="Status distribution">
             <ul class="space-y-2">
-              <li v-for="row in store.overview.status_distribution" :key="row.status"
-                class="flex items-center justify-between text-sm">
+              <li
+                v-for="row in store.overview.status_distribution"
+                :key="row.status"
+                class="flex items-center justify-between text-sm"
+              >
                 <span class="capitalize text-gray-700 dark:text-gray-300">{{ row.status }}</span>
                 <span class="font-semibold text-gray-900 dark:text-white/90">{{ row.count }}</span>
               </li>
-              <li v-if="!store.overview.status_distribution.length" class="text-sm text-gray-500">No data.</li>
+              <li
+                v-if="!store.overview.status_distribution.length"
+                class="text-sm text-gray-500 dark:text-gray-400"
+              >
+                No data.
+              </li>
             </ul>
           </ComponentCard>
 
           <!-- Priority distribution -->
           <ComponentCard title="Priority distribution">
             <ul class="space-y-2">
-              <li v-for="row in store.overview.priority_distribution" :key="row.priority"
-                class="flex items-center justify-between text-sm">
+              <li
+                v-for="row in store.overview.priority_distribution"
+                :key="row.priority"
+                class="flex items-center justify-between text-sm"
+              >
                 <span class="capitalize text-gray-700 dark:text-gray-300">{{ row.priority }}</span>
                 <span class="font-semibold text-gray-900 dark:text-white/90">{{ row.count }}</span>
               </li>
-              <li v-if="!store.overview.priority_distribution.length" class="text-sm text-gray-500">No data.</li>
+              <li
+                v-if="!store.overview.priority_distribution.length"
+                class="text-sm text-gray-500 dark:text-gray-400"
+              >
+                No data.
+              </li>
             </ul>
           </ComponentCard>
         </div>
 
         <!-- Workflow: time in status -->
-        <ComponentCard v-if="store.workflow?.time_in_status?.length" title="Median time in status (hours)">
+        <ComponentCard
+          v-if="store.workflow?.time_in_status?.length"
+          title="Median time in status (hours)"
+        >
           <ul class="space-y-2">
-            <li v-for="row in store.workflow.time_in_status" :key="row.status"
-              class="flex items-center justify-between text-sm">
+            <li
+              v-for="row in store.workflow.time_in_status"
+              :key="row.status"
+              class="flex items-center justify-between text-sm"
+            >
               <span class="capitalize text-gray-700 dark:text-gray-300">{{ row.status }}</span>
               <span class="font-semibold text-gray-900 dark:text-white/90">
                 {{ row.median_hours }} h · {{ row.sample_size }} samples
@@ -145,87 +207,130 @@
         </ComponentCard>
 
         <!-- AI insights -->
-        <ComponentCard title="AI-assisted insights"
-          desc="The interpretation is AI-generated; every metric and timestamp comes from the database.">
+        <ComponentCard
+          title="AI-assisted insights"
+          desc="The interpretation is AI-generated; every metric and timestamp comes from the database."
+        >
           <div class="flex flex-wrap items-end gap-3">
             <div>
-              <label class="block mb-1 text-xs text-gray-600 dark:text-gray-400">Insight type</label>
-              <Select v-model="insightType" :options="insightTypes" optionLabel="label" optionValue="value"
-                class="w-56" />
+              <label class="block mb-1 text-xs text-gray-600 dark:text-gray-400"
+                >Insight type</label
+              >
+              <Select
+                v-model="insightType"
+                :options="insightTypes"
+                optionLabel="label"
+                optionValue="value"
+                class="w-56"
+              />
             </div>
-            <button v-if="canGenerateInsight" class="px-4 py-2 text-white bg-blue-600 rounded-md disabled:opacity-50"
-              :disabled="store.saving" @click="requestInsight">
-              <i class="mr-1 pi pi-sparkles"></i>
+            <AppButton
+              v-if="canGenerateInsight"
+              size="sm"
+              :loading="store.saving"
+              :onClick="requestInsight"
+            >
               Generate insight
-            </button>
+            </AppButton>
           </div>
 
           <div class="grid grid-cols-1 gap-4 mt-5 lg:grid-cols-3">
             <!-- History -->
             <div class="lg:col-span-1">
-              <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Recent insights</h4>
+              <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                Recent insights
+              </h4>
               <ul class="space-y-2">
                 <li v-for="insight in store.insights" :key="insight.id">
-                  <button class="w-full p-3 text-left border rounded-md dark:border-gray-800 hover:border-blue-400"
-                    :class="{ 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/10': selectedInsight?.id === insight.id }"
-                    @click="selectedInsight = insight">
+                  <button
+                    class="w-full p-3 text-left border border-line rounded-card hover:border-brand-400"
+                    :class="{
+                      'border-brand-500 bg-brand-50/50 dark:bg-brand-500/10':
+                        selectedInsight?.id === insight.id,
+                    }"
+                    @click="selectedInsight = insight"
+                  >
                     <div class="flex items-center justify-between">
                       <span class="text-sm text-gray-800 capitalize dark:text-gray-200">
                         {{ insight.insight_type.replace('_', ' ') }}
                       </span>
-                      <span class="px-2 py-0.5 text-xs font-semibold rounded-full" :class="statusClass(insight.status)">
+                      <span
+                        class="px-2 py-0.5 text-xs font-semibold rounded-full"
+                        :class="statusClass(insight.status)"
+                      >
                         {{ insight.status }}
                       </span>
                     </div>
-                    <p class="mt-1 text-xs text-gray-500">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
                       {{ insight.period_start }} &rarr; {{ insight.period_end }}
                     </p>
                   </button>
                 </li>
-                <li v-if="!store.insights.length" class="text-sm text-gray-500">
-                  No insights generated yet.
+                <li v-if="!store.insights.length">
+                  <EmptyState title="No insights yet" description="No insights generated yet." />
                 </li>
               </ul>
             </div>
 
             <!-- Detail -->
             <div class="lg:col-span-2">
-              <div v-if="!selectedInsight" class="text-sm text-gray-500">
+              <div v-if="!selectedInsight" class="text-sm text-gray-500 dark:text-gray-400">
                 Select an insight to see its interpretation.
               </div>
 
-              <div v-else-if="isPending(selectedInsight)"
-                class="py-8 text-center text-sm text-gray-500">
+              <div
+                v-else-if="isPending(selectedInsight)"
+                class="py-8 text-center text-sm text-gray-500 dark:text-gray-400"
+              >
                 <i class="mr-2 pi pi-spin pi-spinner"></i>
                 Generating insight…
               </div>
 
-              <div v-else-if="selectedInsight.status === 'failed'"
-                class="p-3 text-sm text-red-700 bg-red-50 rounded-md dark:bg-red-900/20 dark:text-red-300">
+              <div
+                v-else-if="selectedInsight.status === 'failed'"
+                class="p-3 text-sm text-red-700 bg-red-50 rounded-md dark:bg-red-900/20 dark:text-red-300"
+              >
                 Insight generation failed ({{ selectedInsight.error_code || 'unknown error' }}).
               </div>
 
               <div v-else-if="selectedInsight.result" class="space-y-4">
                 <div>
                   <h4 class="mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Summary</h4>
-                  <p class="text-sm text-gray-800 dark:text-gray-200">{{ selectedInsight.result.summary }}</p>
+                  <p class="text-sm text-gray-800 dark:text-gray-200">
+                    {{ selectedInsight.result.summary }}
+                  </p>
                 </div>
 
                 <div v-if="selectedInsight.result.findings?.length">
-                  <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Findings</h4>
+                  <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Findings
+                  </h4>
                   <div class="space-y-2">
-                    <div v-for="(finding, index) in selectedInsight.result.findings" :key="index"
-                      class="p-3 border rounded-md dark:border-gray-800">
+                    <div
+                      v-for="(finding, index) in selectedInsight.result.findings"
+                      :key="index"
+                      class="p-3 border rounded-md dark:border-gray-800"
+                    >
                       <div class="flex items-center justify-between">
-                        <span class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ finding.title }}</span>
-                        <span class="px-2 py-0.5 text-xs rounded-full" :class="confidenceClass(finding.confidence)">
+                        <span class="text-sm font-medium text-gray-800 dark:text-gray-200">{{
+                          finding.title
+                        }}</span>
+                        <span
+                          class="px-2 py-0.5 text-xs rounded-full"
+                          :class="confidenceClass(finding.confidence)"
+                        >
                           {{ finding.confidence }}
                         </span>
                       </div>
-                      <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">{{ finding.interpretation }}</p>
+                      <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                        {{ finding.interpretation }}
+                      </p>
                       <div v-if="finding.evidence?.length" class="flex flex-wrap gap-1 mt-2">
-                        <span v-for="metric in finding.evidence" :key="metric"
-                          class="px-2 py-0.5 text-xs font-mono bg-gray-100 rounded dark:bg-gray-800 dark:text-gray-300">
+                        <span
+                          v-for="metric in finding.evidence"
+                          :key="metric"
+                          class="px-2 py-0.5 text-xs font-mono bg-gray-100 rounded dark:bg-gray-800 dark:text-gray-300"
+                        >
                           {{ metric }}
                         </span>
                       </div>
@@ -234,20 +339,32 @@
                 </div>
 
                 <div v-if="selectedInsight.result.recommendations?.length">
-                  <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">Suggested human review</h4>
+                  <h4 class="mb-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Suggested human review
+                  </h4>
                   <ul class="space-y-2">
-                    <li v-for="(rec, index) in selectedInsight.result.recommendations" :key="index"
-                      class="p-3 border rounded-md dark:border-gray-800">
-                      <p class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ rec.title }}</p>
+                    <li
+                      v-for="(rec, index) in selectedInsight.result.recommendations"
+                      :key="index"
+                      class="p-3 border rounded-md dark:border-gray-800"
+                    >
+                      <p class="text-sm font-medium text-gray-800 dark:text-gray-200">
+                        {{ rec.title }}
+                      </p>
                       <p class="text-sm text-gray-600 dark:text-gray-400">{{ rec.reason }}</p>
                     </li>
                   </ul>
                 </div>
 
                 <div v-if="selectedInsight.result.limitations?.length">
-                  <h4 class="mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">Limitations</h4>
+                  <h4 class="mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Limitations
+                  </h4>
                   <ul class="pl-5 text-sm text-gray-600 list-disc dark:text-gray-400">
-                    <li v-for="(limitation, index) in selectedInsight.result.limitations" :key="index">
+                    <li
+                      v-for="(limitation, index) in selectedInsight.result.limitations"
+                      :key="index"
+                    >
                       {{ limitation }}
                     </li>
                   </ul>
@@ -274,6 +391,9 @@ import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import StatCard from '@/components/analytics/StatCard.vue'
 import GitHubInsightsPanel from '@/components/insights/GitHubInsightsPanel.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import AppSkeleton from '@/components/common/AppSkeleton.vue'
 import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import VueApexCharts from 'vue3-apexcharts'
@@ -418,18 +538,18 @@ const startPolling = (insightId) => {
 
 const statusClass = (status) =>
   ({
-    completed: 'bg-green-100 text-green-800',
-    failed: 'bg-red-100 text-red-800',
-    queued: 'bg-amber-100 text-amber-800',
-    running: 'bg-blue-100 text-blue-800',
-  })[status] || 'bg-gray-100 text-gray-700'
+    completed: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
+    failed: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
+    queued: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300',
+    running: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
+  })[status] || 'bg-gray-100 text-gray-700 dark:bg-gray-500/15 dark:text-gray-300'
 
 const confidenceClass = (confidence) =>
   ({
-    high: 'bg-green-100 text-green-700',
-    medium: 'bg-amber-100 text-amber-700',
-    low: 'bg-gray-100 text-gray-600',
-  })[confidence] || 'bg-gray-100 text-gray-600'
+    high: 'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300',
+    medium: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
+    low: 'bg-gray-100 text-gray-600 dark:bg-gray-500/15 dark:text-gray-300',
+  })[confidence] || 'bg-gray-100 text-gray-600 dark:bg-gray-500/15 dark:text-gray-300'
 
 onMounted(async () => {
   await projectStore.fetchAllProjects()

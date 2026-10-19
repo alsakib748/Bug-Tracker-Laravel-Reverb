@@ -1,9 +1,9 @@
 <template>
-  <div class="flex w-72 flex-shrink-0 flex-col rounded-xl bg-gray-50 dark:bg-gray-900/40">
-    <div class="flex items-center justify-between border-b border-gray-200 px-3 py-2 dark:border-gray-700">
+  <div class="flex w-72 flex-shrink-0 flex-col rounded-card bg-gray-50 dark:bg-white/[0.02]">
+    <div class="flex items-center justify-between border-b border-line px-3 py-2">
       <div class="flex items-center gap-2">
         <span class="h-2.5 w-2.5 rounded-full" :style="{ backgroundColor: dotColor }"></span>
-        <span class="text-sm font-semibold text-gray-700 dark:text-gray-200">{{ column.label }}</span>
+        <span class="text-sm font-semibold text-ink dark:text-gray-200">{{ column.label }}</span>
       </div>
       <span
         class="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300"
@@ -12,6 +12,9 @@
       </span>
     </div>
 
+    <!-- `column` is a reactive object from the Pinia store; vuedraggable needs a
+         real v-model to reorder locally before the move is persisted. -->
+    <!-- eslint-disable vue/no-mutating-props -->
     <draggable
       v-model="column.issues"
       :group="{ name: 'board-issues' }"
@@ -24,8 +27,11 @@
         <BoardIssueCard :issue="element" @click="$emit('issue-click', element)" />
       </template>
     </draggable>
+    <!-- eslint-enable vue/no-mutating-props -->
 
-    <div class="border-t border-gray-200 px-3 py-1.5 text-right text-xs text-gray-400 dark:border-gray-700">
+    <div
+      class="border-t border-line px-3 py-1.5 text-right text-xs text-ink-muted dark:border-gray-700"
+    >
       {{ totalPoints }} SP
     </div>
   </div>
@@ -53,7 +59,8 @@ const STATUS_DOT = {
   reopened: '#ef4444',
 }
 
-const dotColor = computed(() => STATUS_DOT[props.column.status] || '#9ca3af')
+// Prefer the color the API sends for this column; fall back to our map.
+const dotColor = computed(() => props.column.color || STATUS_DOT[props.column.status] || '#9ca3af')
 
 const totalPoints = computed(() =>
   props.column.issues.reduce((sum, issue) => sum + (issue.story_points || 0), 0),

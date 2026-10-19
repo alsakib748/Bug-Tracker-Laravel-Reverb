@@ -1,66 +1,88 @@
 <template>
   <AdminLayout>
-    <PageBreadcrumb title="Automation Rule" :pageTitle="currentPageTitle" />
+    <PageBreadcrumb
+      :pageTitle="currentPageTitle"
+      description="Review the conditions, actions, and recent executions of this automation rule."
+    />
     <div class="space-y-5 sm:space-y-6">
-      <div v-if="automationStore.loading" class="flex items-center gap-2 text-gray-500">
-        <i class="pi pi-spin pi-spinner"></i> Loading rule…
-      </div>
+      <AppSkeleton v-if="automationStore.loading" :rows="6" />
 
       <template v-else-if="rule">
         <ComponentCard title="Rule">
           <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h3 class="text-lg font-semibold text-gray-800">{{ rule.name }}</h3>
-              <p class="mt-1 text-sm text-gray-500">{{ rule.description || 'No description.' }}</p>
+              <h3 class="text-lg font-semibold text-ink dark:text-gray-300">{{ rule.name }}</h3>
+              <p class="mt-1 text-sm text-ink-muted dark:text-gray-400">
+                {{ rule.description || 'No description.' }}
+              </p>
               <div class="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                <span :class="rule.is_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'"
-                  class="rounded-full px-3 py-1 font-medium">
+                <AppBadge size="sm" :color="rule.is_enabled ? 'success' : 'light'">
                   {{ rule.is_enabled ? 'Enabled' : 'Disabled' }}
-                </span>
-                <span class="rounded-full bg-indigo-100 px-3 py-1 font-medium text-indigo-700">
+                </AppBadge>
+                <AppBadge size="sm" color="primary">
                   {{ triggerLabel(rule.trigger_type) }}
-                </span>
-                <span class="rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-700">
-                  v{{ rule.version }}
-                </span>
-                <span v-if="rule.run_on_actor_changes" class="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-700">
+                </AppBadge>
+                <AppBadge size="sm" color="light">v{{ rule.version }}</AppBadge>
+                <AppBadge v-if="rule.run_on_actor_changes" size="sm" color="warning">
                   reacts to its own changes
-                </span>
+                </AppBadge>
               </div>
             </div>
 
             <div v-if="canManage" class="flex gap-2">
-              <router-link :to="`/automation/${rule.id}/edit`"
-                class="px-4 py-2 border rounded-md hover:bg-gray-50">
-                Edit
-              </router-link>
-              <Button :label="rule.is_enabled ? 'Disable' : 'Enable'"
-                :icon="rule.is_enabled ? 'pi pi-pause' : 'pi pi-play'" outlined @click="toggle" />
-              <Button label="Delete" icon="pi pi-trash" severity="danger" @click="confirmDelete" />
+              <AppButton size="sm" variant="outline" :onClick="goEdit">Edit</AppButton>
+              <AppButton size="sm" variant="outline" :onClick="toggle">
+                <i :class="rule.is_enabled ? 'pi pi-pause' : 'pi pi-play'" aria-hidden="true"></i>
+                {{ rule.is_enabled ? 'Disable' : 'Enable' }}
+              </AppButton>
+              <AppButton size="sm" variant="danger" :onClick="confirmDelete">
+                <i class="pi pi-trash" aria-hidden="true"></i>
+                Delete
+              </AppButton>
             </div>
           </div>
 
           <div class="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
             <div>
-              <h4 class="text-sm font-semibold text-gray-800">Conditions ({{ rule.conditions?.match || 'all' }})</h4>
-              <ul v-if="rule.conditions?.rules?.length" class="mt-2 space-y-1 text-sm text-gray-600">
-                <li v-for="(condition, index) in rule.conditions.rules" :key="index" class="rounded bg-gray-50 px-3 py-1">
+              <h4 class="text-sm font-semibold text-ink dark:text-gray-300">
+                Conditions ({{ rule.conditions?.match || 'all' }})
+              </h4>
+              <ul
+                v-if="rule.conditions?.rules?.length"
+                class="mt-2 space-y-1 text-sm text-ink-muted dark:text-gray-400"
+              >
+                <li
+                  v-for="(condition, index) in rule.conditions.rules"
+                  :key="index"
+                  class="rounded bg-gray-50 px-3 py-1 dark:bg-white/[0.03]"
+                >
                   <span class="font-medium">{{ humanize(condition.field) }}</span>
                   {{ operatorLabel(condition.operator) }}
-                  <span v-if="condition.value !== null && condition.value !== ''" class="font-medium">
+                  <span
+                    v-if="condition.value !== null && condition.value !== ''"
+                    class="font-medium"
+                  >
                     {{ valueLabel(condition.field, condition.value) }}
                   </span>
                 </li>
               </ul>
-              <p v-else class="mt-2 text-sm text-gray-500">Runs on every matching trigger.</p>
+              <p v-else class="mt-2 text-sm text-ink-muted dark:text-gray-400">
+                Runs on every matching trigger.
+              </p>
             </div>
 
             <div>
-              <h4 class="text-sm font-semibold text-gray-800">Actions</h4>
-              <ul class="mt-2 space-y-1 text-sm text-gray-600">
-                <li v-for="(action, index) in rule.actions" :key="index" class="rounded bg-gray-50 px-3 py-1">
+              <h4 class="text-sm font-semibold text-ink dark:text-gray-300">Actions</h4>
+              <ul class="mt-2 space-y-1 text-sm text-ink-muted dark:text-gray-400">
+                <li
+                  v-for="(action, index) in rule.actions"
+                  :key="index"
+                  class="rounded bg-gray-50 px-3 py-1 dark:bg-white/[0.03]"
+                >
                   {{ actionLabel(action.type) }}
-                  <span class="text-gray-400">— {{ describeConfig(action) }}</span>
+                  <span class="text-ink-muted dark:text-gray-400"
+                    >— {{ describeConfig(action) }}</span
+                  >
                 </li>
               </ul>
             </div>
@@ -68,16 +90,21 @@
         </ComponentCard>
 
         <ComponentCard title="Recent executions">
-          <DataTable :value="automationStore.executions" :loading="loadingExecutions" paginator :rows="10"
-            responsiveLayout="scroll">
+          <DataTable
+            :value="automationStore.executions"
+            :loading="loadingExecutions"
+            paginator
+            :rows="10"
+            responsiveLayout="scroll"
+          >
             <Column field="created_at" header="When">
               <template #body="{ data }">{{ formatDate(data.created_at) }}</template>
             </Column>
             <Column field="status" header="Status">
               <template #body="{ data }">
-                <span :class="statusClass(data.status)" class="rounded-full px-2 py-1 text-xs font-semibold">
+                <AppBadge size="sm" :color="executionStatusColor(data.status)">
                   {{ humanize(data.status) }}
-                </span>
+                </AppBadge>
               </template>
             </Column>
             <Column field="event_type" header="Trigger">
@@ -86,21 +113,29 @@
             <Column header="Result">
               <template #body="{ data }">
                 <template v-if="data.actions?.length">
-                  <span v-for="action in data.actions" :key="action.id"
-                    :class="statusClass(action.status)"
-                    class="mr-1 rounded-full px-2 py-0.5 text-[11px] font-medium">
+                  <AppBadge
+                    v-for="action in data.actions"
+                    :key="action.id"
+                    size="sm"
+                    className="mr-1"
+                    :color="executionStatusColor(action.status)"
+                  >
                     {{ actionLabel(data.action_type || action.action_type) }}
-                  </span>
+                  </AppBadge>
                 </template>
-                <span v-else-if="data.error_code" class="text-xs text-red-600">{{ data.error_code }}</span>
-                <span v-else class="text-xs text-gray-400">—</span>
+                <span v-else-if="data.error_code" class="text-xs text-red-600">{{
+                  data.error_code
+                }}</span>
+                <span v-else class="text-xs text-ink-muted dark:text-gray-400">—</span>
               </template>
             </Column>
           </DataTable>
 
-          <div v-if="!automationStore.executions.length && !loadingExecutions" class="py-4 text-sm text-gray-500">
-            This rule has not run yet.
-          </div>
+          <EmptyState
+            v-if="!automationStore.executions.length && !loadingExecutions"
+            title="No executions yet"
+            description="This rule has not run yet."
+          />
         </ComponentCard>
       </template>
     </div>
@@ -114,10 +149,13 @@ import { useAutomationStore } from '@/stores/automation'
 import { usePermissions } from '@/composables/usePermissions'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
-import Button from 'primevue/button'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import AppBadge from '@/components/ui/AppBadge.vue'
+import AppSkeleton from '@/components/common/AppSkeleton.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
 import Swal from 'sweetalert2'
 import { toast } from 'vue3-toastify'
 
@@ -139,7 +177,8 @@ const humanize = (value) =>
     .replace(/\b\w/g, (char) => char.toUpperCase())
 
 const triggerLabel = (value) =>
-  automationStore.options.triggers.find((trigger) => trigger.value === value)?.label || humanize(value)
+  automationStore.options.triggers.find((trigger) => trigger.value === value)?.label ||
+  humanize(value)
 
 const operatorLabel = (value) =>
   automationStore.options.operators.find((operator) => operator.value === value)?.label || value
@@ -161,17 +200,20 @@ const describeConfig = (action) => {
     .join(' · ')
 }
 
-const statusClass = (status) =>
-  ({
-    succeeded: 'bg-green-100 text-green-800',
-    partially_failed: 'bg-amber-100 text-amber-800',
-    failed: 'bg-red-100 text-red-800',
-    skipped: 'bg-gray-100 text-gray-700',
-    running: 'bg-blue-100 text-blue-800',
-    queued: 'bg-blue-100 text-blue-800',
-  })[status] || 'bg-gray-100 text-gray-700'
+const EXECUTION_STATUS_COLOR = {
+  succeeded: 'success',
+  partially_failed: 'warning',
+  failed: 'error',
+  skipped: 'light',
+  running: 'info',
+  queued: 'info',
+}
+
+const executionStatusColor = (status) => EXECUTION_STATUS_COLOR[status] || 'light'
 
 const formatDate = (value) => (value ? new Date(value).toLocaleString() : '—')
+
+const goEdit = () => router.push(`/automation/${rule.value.id}/edit`)
 
 const toggle = async () => {
   try {

@@ -1,29 +1,52 @@
 <template>
   <AdminLayout>
-    <PageBreadcrumb title="Automation" :pageTitle="currentPageTitle" />
+    <PageBreadcrumb
+      :pageTitle="currentPageTitle"
+      description="Create rules that automatically respond to issue events for each project."
+    />
     <div class="space-y-5 sm:space-y-6">
       <ComponentCard title="Automation Rules">
         <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <Select v-model="projectId" :options="projects" optionLabel="name" optionValue="id"
-            placeholder="Select a project" filter class="w-64" @change="loadRules" />
-          <router-link v-if="projectId && can('manage automation rules')"
-            :to="`/automation/create?project=${projectId}`" class="bg-blue-600 text-white px-4 py-2 rounded-md">
+          <Select
+            v-model="projectId"
+            :options="projects"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Select a project"
+            filter
+            class="w-64"
+            @change="loadRules"
+          />
+          <AppButton
+            v-if="projectId && can('manage automation rules')"
+            size="sm"
+            :onClick="goCreate"
+          >
             + New Rule
-          </router-link>
+          </AppButton>
         </div>
 
-        <div v-if="!projectId" class="text-sm text-gray-500">
+        <div v-if="!projectId" class="text-sm text-ink-muted dark:text-gray-400">
           Select a project to see and manage its automation rules.
         </div>
 
-        <DataTable v-else :value="automationStore.rules" :loading="automationStore.loading" paginator :rows="10"
-          responsiveLayout="scroll" class="p-2">
+        <DataTable
+          v-else
+          :value="automationStore.rules"
+          :loading="automationStore.loading"
+          paginator
+          :rows="10"
+          responsiveLayout="scroll"
+          class="p-2"
+        >
           <Column field="name" header="Name">
             <template #body="{ data }">
               <router-link :to="`/automation/${data.id}`" class="text-blue-500 hover:underline">
                 {{ data.name }}
               </router-link>
-              <div v-if="data.description" class="text-xs text-gray-500">{{ data.description }}</div>
+              <div v-if="data.description" class="text-xs text-ink-muted dark:text-gray-400">
+                {{ data.description }}
+              </div>
             </template>
           </Column>
           <Column header="Trigger">
@@ -37,28 +60,40 @@
           </Column>
           <Column header="Status">
             <template #body="{ data }">
-              <span class="px-2 py-1 text-xs font-semibold rounded-full"
-                :class="data.is_enabled ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
+              <AppBadge size="sm" :color="data.is_enabled ? 'success' : 'light'">
                 {{ data.is_enabled ? 'Enabled' : 'Disabled' }}
-              </span>
+              </AppBadge>
             </template>
           </Column>
           <Column header="Actions" style="min-width: 170px">
             <template #body="{ data }">
-              <router-link :to="`/automation/${data.id}`" class="text-gray-600 mr-2 hover:underline"
-                title="View">
+              <router-link
+                :to="`/automation/${data.id}`"
+                class="text-ink-muted mr-2 hover:underline dark:text-gray-400"
+                title="View"
+              >
                 <i class="pi pi-eye"></i>
               </router-link>
               <template v-if="can('manage automation rules')">
-                <router-link :to="`/automation/${data.id}/edit`" class="text-blue-600 mr-2 hover:underline"
-                  title="Edit">
+                <router-link
+                  :to="`/automation/${data.id}/edit`"
+                  class="text-blue-600 mr-2 hover:underline"
+                  title="Edit"
+                >
                   <i class="pi pi-pen-to-square"></i>
                 </router-link>
-                <button :title="data.is_enabled ? 'Disable' : 'Enable'" class="text-amber-600 mr-2 hover:underline"
-                  @click="toggle(data)">
+                <button
+                  :title="data.is_enabled ? 'Disable' : 'Enable'"
+                  class="text-amber-600 mr-2 hover:underline"
+                  @click="toggle(data)"
+                >
                   <i :class="data.is_enabled ? 'pi pi-pause' : 'pi pi-play'"></i>
                 </button>
-                <button title="Delete" class="text-red-600 hover:underline" @click="confirmDelete(data)">
+                <button
+                  title="Delete"
+                  class="text-red-600 hover:underline"
+                  @click="confirmDelete(data)"
+                >
                   <i class="pi pi-trash"></i>
                 </button>
               </template>
@@ -72,7 +107,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useProjectStore } from '@/stores/projects'
 import { useAutomationStore } from '@/stores/automation'
 import { usePermissions } from '@/composables/usePermissions'
@@ -82,17 +117,22 @@ import Select from 'primevue/select'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import AppBadge from '@/components/ui/AppBadge.vue'
 import Swal from 'sweetalert2'
 import { toast } from 'vue3-toastify'
 
 const currentPageTitle = ref('Automation Rules')
 const route = useRoute()
+const router = useRouter()
 const projectStore = useProjectStore()
 const automationStore = useAutomationStore()
 const { can } = usePermissions()
 
 const projects = ref([])
 const projectId = ref(null)
+
+const goCreate = () => router.push(`/automation/create?project=${projectId.value}`)
 
 const triggerLabel = (value) =>
   automationStore.options.triggers.find((trigger) => trigger.value === value)?.label || value

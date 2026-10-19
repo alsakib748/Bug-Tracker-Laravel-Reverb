@@ -40,6 +40,7 @@ class IssueController extends Controller
             'reporter_id',
             'search',
             'sort',
+            'overdue',
         ]);
 
         $perPage = $request->get('per_page', 15);

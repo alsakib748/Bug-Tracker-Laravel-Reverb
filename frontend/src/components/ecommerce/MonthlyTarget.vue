@@ -132,7 +132,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, computed } from 'vue'
 import DropdownMenu from '../common/DropdownMenu.vue'
 const menuItems = [
@@ -179,7 +179,7 @@ const chartOptions = {
           fontWeight: '600',
           offsetY: 60,
           color: '#1D2939',
-          formatter: function (val: number) {
+          formatter: function (val) {
             return val.toFixed(2) + '%'
           },
         },

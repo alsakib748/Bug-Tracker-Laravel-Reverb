@@ -180,7 +180,7 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref } from 'vue'
 
 const email = ref('')
@@ -200,11 +200,11 @@ const countryCodes = {
 }
 
 const updatePhoneNumber = () => {
-  phoneNumber.value = countryCodes[selectedCountry.value as keyof typeof countryCodes]
+  phoneNumber.value = countryCodes[selectedCountry.value]
 }
 
 const updatePhoneNumber2 = () => {
-  phoneNumber2.value = countryCodes[selectedCountry2.value as keyof typeof countryCodes]
+  phoneNumber2.value = countryCodes[selectedCountry2.value]
 }
 
 const copyWebsite = () => {

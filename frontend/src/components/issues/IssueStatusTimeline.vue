@@ -1,7 +1,5 @@
 <template>
-  <div class="mt-6">
-    <h2 class="text-xl text-gray-700 mb-3">Status History:</h2>
-
+  <div>
     <div v-if="loading" class="flex justify-center py-4">
       <i class="pi pi-spin pi-spinner text-blue-600" style="font-size: 1.5rem"></i>
     </div>
@@ -11,8 +9,11 @@
     </div>
 
     <ul v-else class="space-y-3">
-      <li v-for="entry in history" :key="entry.id"
-        class="border-l-4 border-blue-500 bg-gray-50 rounded px-3 py-2">
+      <li
+        v-for="entry in history"
+        :key="entry.id"
+        class="border-l-4 border-blue-500 bg-gray-50 rounded px-3 py-2"
+      >
         <div class="text-sm text-gray-800">
           <span class="font-medium">{{ statusLabel(entry.from_status) }}</span>
           <i class="pi pi-arrow-right mx-2 text-gray-400 text-xs"></i>

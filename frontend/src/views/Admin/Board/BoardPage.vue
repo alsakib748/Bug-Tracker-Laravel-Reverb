@@ -1,6 +1,9 @@
 <template>
   <AdminLayout>
-    <PageBreadcrumb :pageTitle="currentPageTitle" />
+    <PageBreadcrumb
+      :pageTitle="currentPageTitle"
+      description="Drag issues between columns to update their status."
+    />
 
     <div class="space-y-5 sm:space-y-6">
       <!-- Toolbar -->
@@ -28,12 +31,18 @@
         <div class="ml-auto flex flex-wrap items-center gap-2">
           <template v-if="hasPermission('manage board')">
             <template v-if="activeSprint">
-              <span class="text-sm text-gray-500 dark:text-gray-400">
+              <span class="text-sm text-ink-muted dark:text-gray-400">
                 Active:
-                <span class="font-semibold text-gray-700 dark:text-gray-200">{{ activeSprint.name }}</span>
+                <span class="font-semibold text-ink dark:text-gray-200">{{
+                  activeSprint.name
+                }}</span>
               </span>
-              <Button label="Complete Sprint" size="small" @click="completionVisible = true" />
-              <Button label="Cancel Sprint" size="small" severity="danger" outlined @click="confirmCancel" />
+              <AppButton size="sm" :onClick="() => (completionVisible = true)"
+                >Complete Sprint</AppButton
+              >
+              <AppButton size="sm" variant="danger" :onClick="confirmCancel"
+                >Cancel Sprint</AppButton
+              >
             </template>
 
             <template v-else-if="plannedSprints.length">
@@ -45,20 +54,22 @@
                 placeholder="Start a sprint"
                 class="w-48"
               />
-              <Button
-                label="Start Sprint"
-                size="small"
-                :disabled="!sprintToStart"
-                @click="confirmStart"
-              />
+              <AppButton size="sm" :disabled="!sprintToStart" :onClick="confirmStart"
+                >Start Sprint</AppButton
+              >
             </template>
 
-            <Button label="New Sprint" size="small" outlined @click="planningVisible = true" />
+            <AppButton size="sm" variant="outline" :onClick="() => (planningVisible = true)">
+              New Sprint
+            </AppButton>
           </template>
         </div>
       </div>
 
-      <div v-if="!projectId" class="rounded-xl border border-gray-200 p-8 text-center text-gray-500 dark:border-gray-700">
+      <div
+        v-if="!projectId"
+        class="rounded-card border border-line bg-surface p-8 text-center text-ink-muted"
+      >
         Select a project to view its board.
       </div>
 
@@ -66,12 +77,7 @@
         <AppSkeleton class="space-y-3" />
       </div>
 
-      <KanbanBoard
-        v-else
-        :columns="boardStore.columns"
-        @issue-click="openIssue"
-        @move="onMove"
-      />
+      <KanbanBoard v-else :columns="boardStore.columns" @issue-click="openIssue" @move="onMove" />
     </div>
 
     <SprintPlanningDialog
@@ -103,13 +109,13 @@ import SprintPlanningDialog from '@/components/sprints/SprintPlanningDialog.vue'
 import SprintCompletionDialog from '@/components/sprints/SprintCompletionDialog.vue'
 
 import Select from 'primevue/select'
-import Button from 'primevue/button'
 
 import { useBoardStore } from '@/stores/board'
 import { useSprintStore } from '@/stores/sprints'
 import { useProjectStore } from '@/stores/projects'
 import { usePermissions } from '@/composables/usePermissions'
 import AppSkeleton from '@/components/common/AppSkeleton.vue'
+import AppButton from '@/components/ui/AppButton.vue'
 import echo from '@/services/echo'
 import { onRealtimeReconnect, debounce } from '@/services/realtime'
 
@@ -187,11 +193,7 @@ const onMove = async ({ issue, status, position }) => {
   try {
     await boardStore.persistMove(issue, status, position)
   } catch (error) {
-    Swal.fire(
-      'Move failed',
-      error.response?.data?.message || 'That move is not allowed.',
-      'error',
-    )
+    Swal.fire('Move failed', error.response?.data?.message || 'That move is not allowed.', 'error')
   }
 }
 

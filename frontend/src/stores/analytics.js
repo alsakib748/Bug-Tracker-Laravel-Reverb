@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia'
-import { fetchGitHubAnalytics, fetchOverview, fetchTrends, fetchWorkflow } from '@/services/analyticsApi'
+import {
+  fetchGitHubAnalytics,
+  fetchOverview,
+  fetchTrends,
+  fetchWorkflow,
+} from '@/services/analyticsApi'
 import { fetchInsight, fetchInsights, requestInsight } from '@/services/insightsApi'
 
 export const useAnalyticsStore = defineStore('analytics', {
@@ -50,10 +55,12 @@ export const useAnalyticsStore = defineStore('analytics', {
     async loadInsights(projectId) {
       const { data } = await fetchInsights(projectId)
       this.insights = data.data
+      // ResourceCollection + paginator nests paging under `meta`
+      const meta = data.meta || data
       this.insightsPagination = {
-        current_page: data.current_page,
-        last_page: data.last_page,
-        total: data.total,
+        current_page: meta.current_page || 1,
+        last_page: meta.last_page || 1,
+        total: meta.total || 0,
       }
       return this.insights
     },

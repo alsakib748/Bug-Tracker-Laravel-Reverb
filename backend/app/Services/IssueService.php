@@ -51,6 +51,12 @@ class IssueService
             ->when($filters['type'] ?? null, fn ($q, $v) => $q->where('type', $v))
             ->when($filters['assigned_to'] ?? null, fn ($q, $v) => $q->where('assigned_to', $v))
             ->when($filters['reporter_id'] ?? null, fn ($q, $v) => $q->where('reporter_id', $v))
+            ->when(
+                in_array($filters['overdue'] ?? null, [true, 1, '1', 'true'], true),
+                fn ($q) => $q->whereNotNull('due_date')
+                    ->whereDate('due_date', '<', now())
+                    ->whereIn('status', ['open', 'assigned', 'in_progress', 'code_review', 'testing', 'reopened'])
+            )
             ->when($filters['search'] ?? null, function ($q, $search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('description', 'like', "%{$search}%");

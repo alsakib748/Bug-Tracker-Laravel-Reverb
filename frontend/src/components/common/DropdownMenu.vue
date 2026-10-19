@@ -30,7 +30,7 @@
             v-if="item.to"
             :key="`router-${index}`"
             :to="item.to"
-            @click.native="handleMenuItemClick(item.onClick)"
+            @click="handleMenuItemClick(item.onClick)"
             :class="itemClass"
           >
             {{ item.label }}

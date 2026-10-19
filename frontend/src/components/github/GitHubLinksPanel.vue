@@ -1,7 +1,5 @@
 <template>
   <div>
-    <h2 class="text-xl text-gray-700 mb-2">GitHub Development</h2>
-
     <div v-if="loading" class="flex justify-center py-2">
       <i class="pi pi-spin pi-spinner text-blue-600" style="font-size: 1.25rem"></i>
     </div>
@@ -11,40 +9,74 @@
     </div>
 
     <ul v-else class="space-y-2">
-      <li v-for="link in links" :key="link.id"
-        class="flex items-center justify-between border border-gray-200 rounded px-3 py-2">
-        <a :href="link.external_url" target="_blank" rel="noopener noreferrer"
-          class="flex items-center gap-2 text-sm text-blue-600 hover:underline min-w-0">
+      <li
+        v-for="link in links"
+        :key="link.id"
+        class="flex items-center justify-between border border-gray-200 rounded px-3 py-2"
+      >
+        <a
+          :href="link.external_url"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="flex items-center gap-2 text-sm text-blue-600 hover:underline min-w-0"
+        >
           <i :class="link.entity_icon" class="text-gray-500"></i>
           <span class="truncate">
-            <template v-if="link.entity_type === 'pull_request'">PR #{{ link.external_number }}</template>
-            <template v-else-if="link.entity_type === 'commit'">Commit {{ link.external_sha_short }}</template>
+            <template v-if="link.entity_type === 'pull_request'"
+              >PR #{{ link.external_number }}</template
+            >
+            <template v-else-if="link.entity_type === 'commit'"
+              >Commit {{ link.external_sha_short }}</template
+            >
             <template v-else>{{ link.entity_type_label }}</template>
             · {{ link.repository?.full_name }}
           </span>
-          <span v-if="link.pull_request" class="text-xs px-1.5 py-0.5 rounded shrink-0"
-            :class="stateClasses(link.pull_request)">
+          <span
+            v-if="link.pull_request"
+            class="text-xs px-1.5 py-0.5 rounded shrink-0"
+            :class="stateClasses(link.pull_request)"
+          >
             {{ stateLabel(link.pull_request) }}
           </span>
-          <span v-if="link.ci" class="text-xs px-1.5 py-0.5 rounded shrink-0" :class="ciClasses(link.ci)"
-            :title="link.ci.name">
+          <span
+            v-if="link.ci"
+            class="text-xs px-1.5 py-0.5 rounded shrink-0"
+            :class="ciClasses(link.ci)"
+            :title="link.ci.name"
+          >
             {{ ciLabel(link.ci) }}
           </span>
           <span class="text-xs text-gray-400 shrink-0">{{ link.link_source_label }}</span>
         </a>
-        <button v-if="canManage" type="button" class="text-red-500 hover:text-red-700 shrink-0 ml-2" title="Remove link"
-          @click="$emit('remove', link)">
+        <button
+          v-if="canManage"
+          type="button"
+          class="text-red-500 hover:text-red-700 shrink-0 ml-2"
+          title="Remove link"
+          @click="$emit('remove', link)"
+        >
           <i class="pi pi-trash"></i>
         </button>
       </li>
     </ul>
 
     <div v-if="canManage && candidates.length" class="mt-4">
-      <Select v-model="selectedCandidate" :options="candidateOptions" optionLabel="label" optionValue="value"
-        placeholder="Select an open pull request" class="w-full md:w-96" filter />
-      <Button label="Link pull request" :loading="linking" :disabled="!selectedCandidate"
+      <Select
+        v-model="selectedCandidate"
+        :options="candidateOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Select an open pull request"
+        class="w-full md:w-96"
+        filter
+      />
+      <Button
+        label="Link pull request"
+        :loading="linking"
+        :disabled="!selectedCandidate"
         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md mt-2"
-        @click="linkSelected" />
+        @click="linkSelected"
+      />
     </div>
     <p v-else-if="canManage && !loading" class="text-xs text-gray-400 mt-2">
       No open pull requests available from this project's linked repositories.

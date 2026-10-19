@@ -36,7 +36,9 @@
         </div>
 
         <div class="flex w-full max-w-[140px] items-center gap-3">
-          <div class="relative block h-2 w-full max-w-[100px] rounded-sm bg-gray-200 dark:bg-gray-800">
+          <div
+            class="relative block h-2 w-full max-w-[100px] rounded-sm bg-gray-200 dark:bg-gray-800"
+          >
             <div
               class="absolute left-0 top-0 flex h-full w-[79%] items-center justify-center rounded-sm bg-brand-500 text-xs font-medium text-white"
             ></div>
@@ -59,7 +61,9 @@
         </div>
 
         <div class="flex w-full max-w-[140px] items-center gap-3">
-          <div class="relative block h-2 w-full max-w-[100px] rounded-sm bg-gray-200 dark:bg-gray-800">
+          <div
+            class="relative block h-2 w-full max-w-[100px] rounded-sm bg-gray-200 dark:bg-gray-800"
+          >
             <div
               class="absolute left-0 top-0 flex h-full w-[23%] items-center justify-center rounded-sm bg-brand-500 text-xs font-medium text-white"
             ></div>
@@ -71,13 +75,13 @@
   </div>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { onMounted, ref } from 'vue'
 import jsVectorMap from 'jsvectormap'
 import 'jsvectormap/dist/maps/world'
 
-const mapOneRef = ref<HTMLElement | null>(null)
-const mapInstance = ref<any>(null)
+const mapOneRef = ref(null)
+const mapInstance = ref(null)
 
 const initMap = () => {
   if (mapOneRef.value) {
@@ -123,8 +127,8 @@ const initMap = () => {
         selected: {},
         selectedHover: {},
       },
-      onRegionTooltipShow: function (event: MouseEvent, tooltip: any) {
-        const code = (event.target as HTMLElement).getAttribute('data-code')
+      onRegionTooltipShow: function (event, tooltip) {
+        const code = event.target.getAttribute('data-code')
         if (code === 'EG') {
           tooltip.setContent(tooltip.text() + ' (Hello Egypt)')
         }

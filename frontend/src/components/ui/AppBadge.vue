@@ -1,5 +1,5 @@
 <template>
-  <span :class="[baseStyles, sizeClass, colorStyles]">
+  <span :class="[baseStyles, sizeClass, colorStyles, className]">
     <span v-if="startIcon" class="mr-1">
       <component :is="startIcon" />
     </span>
@@ -10,25 +10,25 @@
   </span>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { computed } from 'vue'
 
-type BadgeVariant = 'light' | 'solid'
-type BadgeSize = 'sm' | 'md'
-type BadgeColor = 'primary' | 'success' | 'error' | 'warning' | 'info' | 'light' | 'dark'
-
-interface BadgeProps {
-  variant?: BadgeVariant
-  size?: BadgeSize
-  color?: BadgeColor
-  startIcon?: object
-  endIcon?: object
-}
-
-const props = withDefaults(defineProps<BadgeProps>(), {
-  variant: 'light',
-  color: 'primary',
-  size: 'md',
+const props = defineProps({
+  variant: {
+    type: String,
+    default: 'light',
+    validator: (v) => ['light', 'solid'].includes(v),
+  },
+  size: { type: String, default: 'md', validator: (v) => ['sm', 'md'].includes(v) },
+  color: {
+    type: String,
+    default: 'primary',
+    validator: (v) =>
+      ['primary', 'success', 'error', 'warning', 'info', 'light', 'dark'].includes(v),
+  },
+  startIcon: { type: Object, default: undefined },
+  endIcon: { type: Object, default: undefined },
+  className: { type: String, default: '' },
 })
 
 const baseStyles =

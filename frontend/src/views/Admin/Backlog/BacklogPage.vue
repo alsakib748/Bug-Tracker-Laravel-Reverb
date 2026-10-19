@@ -1,6 +1,9 @@
 <template>
   <AdminLayout>
-    <PageBreadcrumb :pageTitle="currentPageTitle" />
+    <PageBreadcrumb
+      :pageTitle="currentPageTitle"
+      description="Prioritize issues and plan them into upcoming sprints."
+    />
 
     <div class="space-y-5 sm:space-y-6">
       <div class="flex flex-wrap items-center gap-3">
@@ -15,60 +18,72 @@
         />
 
         <div v-if="canManage" class="ml-auto">
-          <Button label="New Sprint" size="small" outlined @click="planningVisible = true" />
+          <AppButton size="sm" variant="outline" :onClick="() => (planningVisible = true)">
+            New Sprint
+          </AppButton>
         </div>
       </div>
 
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <!-- Backlog -->
         <div class="lg:col-span-2">
-          <div class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-            <div class="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-              <h3 class="font-semibold text-gray-700 dark:text-gray-200">Backlog</h3>
-              <span class="text-sm text-gray-400">{{ backlog.length }} issues</span>
-            </div>
+          <ComponentCard title="Backlog">
+            <template #header>
+              <span class="text-sm text-ink-muted dark:text-gray-400"
+                >{{ backlog.length }} issues</span
+              >
+            </template>
 
-            <div v-if="loading" class="p-8">
-              <AppSkeleton class="space-y-3" />
-            </div>
+            <AppSkeleton v-if="loading" :rows="4" />
 
-            <div v-else-if="!backlog.length" class="p-8 text-center text-gray-400">
-              The backlog is empty.
-            </div>
+            <ErrorState
+              v-else-if="loadError"
+              title="Couldn't load the backlog"
+              :description="loadError"
+              @retry="loadBacklog"
+            />
+
+            <EmptyState
+              v-else-if="!backlog.length"
+              title="The backlog is empty"
+              description="Issues that have not been planned into a sprint show up here."
+            />
 
             <draggable
               v-else
               v-model="backlog"
               item-key="id"
-              class="space-y-2 p-4"
+              class="space-y-2"
               ghost-class="opacity-40"
               :disabled="!canManage"
               @change="onReorder"
             >
               <template #item="{ element }">
                 <div
-                  class="flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900/40"
+                  class="flex items-center gap-3 rounded-card border border-line bg-surface p-3 dark:border-gray-700 dark:bg-gray-900/40"
                 >
                   <i v-if="canManage" class="pi pi-bars cursor-grab text-gray-400"></i>
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center gap-2">
-                      <span class="font-mono text-xs text-gray-400">{{ element.issue_key }}</span>
-                      <span
-                        class="rounded-full px-2 py-0.5 text-xs font-semibold"
-                        :class="priorityClass(element)"
-                      >
+                      <span class="font-mono text-xs text-ink-muted dark:text-gray-400">{{
+                        element.issue_key
+                      }}</span>
+                      <AppBadge size="sm" :color="priorityBadgeColor(element.priority)">
                         {{ element.priority_label }}
-                      </span>
+                      </AppBadge>
                     </div>
                     <router-link
                       :to="`/issues/${element.id}`"
-                      class="mt-0.5 block truncate text-sm font-medium text-gray-800 hover:text-blue-600 dark:text-gray-100"
+                      class="mt-0.5 block truncate text-sm font-medium text-ink hover:text-blue-600 dark:text-gray-100"
                     >
                       {{ element.title }}
                     </router-link>
                   </div>
 
-                  <span v-if="element.story_points" class="text-xs text-gray-400">
+                  <span
+                    v-if="element.story_points"
+                    class="text-xs text-ink-muted dark:text-gray-400"
+                  >
                     {{ element.story_points }} SP
                   </span>
 
@@ -85,32 +100,33 @@
                 </div>
               </template>
             </draggable>
-          </div>
+          </ComponentCard>
         </div>
 
         <!-- Sprints summary -->
         <div>
-          <div class="rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-            <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-700">
-              <h3 class="font-semibold text-gray-700 dark:text-gray-200">Sprints</h3>
-            </div>
-            <ul v-if="sprintStore.sprints.length" class="divide-y divide-gray-100 dark:divide-gray-700">
+          <ComponentCard title="Sprints">
+            <ul
+              v-if="sprintStore.sprints.length"
+              class="divide-y divide-gray-100 dark:divide-gray-700"
+            >
               <li
                 v-for="sprint in sprintStore.sprints"
                 :key="sprint.id"
-                class="flex items-center justify-between px-4 py-3 text-sm"
+                class="flex items-center justify-between py-3 text-sm"
               >
-                <span class="truncate text-gray-700 dark:text-gray-200">{{ sprint.name }}</span>
-                <span
-                  class="rounded-full px-2 py-0.5 text-xs font-semibold"
-                  :class="sprintStatusClass(sprint.status)"
-                >
+                <span class="truncate text-ink dark:text-gray-200">{{ sprint.name }}</span>
+                <AppBadge size="sm" :color="sprintStatusColor(sprint.status)">
                   {{ sprint.status_label }}
-                </span>
+                </AppBadge>
               </li>
             </ul>
-            <p v-else class="p-4 text-center text-sm text-gray-400">No sprints yet.</p>
-          </div>
+            <EmptyState
+              v-else
+              title="No sprints yet"
+              description="Create a sprint to start planning your team's work."
+            />
+          </ComponentCard>
         </div>
       </div>
     </div>
@@ -131,15 +147,20 @@ import draggable from 'vuedraggable'
 
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
+import ComponentCard from '@/components/common/ComponentCard.vue'
 import SprintPlanningDialog from '@/components/sprints/SprintPlanningDialog.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import AppBadge from '@/components/ui/AppBadge.vue'
+import EmptyState from '@/components/common/EmptyState.vue'
+import ErrorState from '@/components/common/ErrorState.vue'
 
 import Select from 'primevue/select'
-import Button from 'primevue/button'
 
 import { useProjectStore } from '@/stores/projects'
 import { useSprintStore } from '@/stores/sprints'
 import { usePermissions } from '@/composables/usePermissions'
 import AppSkeleton from '@/components/common/AppSkeleton.vue'
+import { priorityBadgeColor } from '@/utils/issueMeta'
 import { fetchBacklog, reorderBacklogIssue } from '@/services/backlogApi'
 import echo from '@/services/echo'
 import { onRealtimeReconnect, debounce } from '@/services/realtime'
@@ -157,30 +178,28 @@ const projectId = ref(null)
 const backlog = ref([])
 const selectedSprints = ref({})
 const loading = ref(false)
+const loadError = ref(null)
 const planningVisible = ref(false)
 
-const PRIORITY_CLASS = {
-  low: 'bg-gray-100 text-gray-700',
-  medium: 'bg-blue-100 text-blue-700',
-  high: 'bg-orange-100 text-orange-700',
-  critical: 'bg-red-100 text-red-700',
+const SPRINT_STATUS_COLOR = {
+  planned: 'light',
+  active: 'success',
+  completed: 'primary',
+  cancelled: 'error',
 }
 
-const priorityClass = (issue) => PRIORITY_CLASS[issue.priority] || 'bg-gray-100 text-gray-700'
-
-const sprintStatusClass = (status) => ({
-  'bg-gray-100 text-gray-600': status === 'planned',
-  'bg-green-100 text-green-700': status === 'active',
-  'bg-blue-100 text-blue-700': status === 'completed',
-  'bg-red-100 text-red-700': status === 'cancelled',
-})
+const sprintStatusColor = (status) => SPRINT_STATUS_COLOR[status] || 'light'
 
 const loadBacklog = async () => {
   if (!projectId.value) return
   loading.value = true
+  loadError.value = null
   try {
     const response = await fetchBacklog(projectId.value)
     backlog.value = response.data.data
+  } catch (error) {
+    loadError.value =
+      error.response?.data?.message || 'Could not load the backlog. Please try again.'
   } finally {
     loading.value = false
   }

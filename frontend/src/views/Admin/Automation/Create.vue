@@ -1,24 +1,40 @@
 <template>
   <AdminLayout>
-    <PageBreadcrumb title="New Automation Rule" :pageTitle="currentPageTitle" />
+    <PageBreadcrumb
+      :pageTitle="currentPageTitle"
+      description="Define a trigger, conditions, and actions that run automatically for your project."
+    />
     <div class="space-y-6">
       <ComponentCard title="Rule builder">
         <div v-if="!projectId" class="max-w-sm">
-          <label class="block text-sm font-medium text-gray-700">Project</label>
-          <Select v-model="projectId" :options="projects" optionLabel="name" optionValue="id"
-            placeholder="Select a project" filter class="w-full mt-1" @change="loadProjectData" />
+          <label class="block text-sm font-medium text-ink dark:text-gray-300">Project</label>
+          <Select
+            v-model="projectId"
+            :options="projects"
+            optionLabel="name"
+            optionValue="id"
+            placeholder="Select a project"
+            filter
+            class="w-full mt-1"
+            @change="loadProjectData"
+          />
         </div>
 
         <template v-else>
-          <RuleForm :form="form" :options="automationStore.options" :members="members" :labels="labels"
-            :errors="errors" />
+          <RuleForm
+            :form="form"
+            :options="automationStore.options"
+            :members="members"
+            :labels="labels"
+            :errors="errors"
+          />
 
-          <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
-            <router-link :to="`/automation?project=${projectId}`"
-              class="px-4 py-2 border rounded-md hover:bg-gray-50">
-              Cancel
-            </router-link>
-            <Button label="Create rule" icon="pi pi-check" :loading="automationStore.saving" @click="submit" />
+          <div class="mt-6 flex justify-end gap-3 border-t border-line pt-4">
+            <AppButton variant="outline" :onClick="goCancel">Cancel</AppButton>
+            <AppButton :loading="automationStore.saving" :onClick="submit">
+              <i v-if="!automationStore.saving" class="pi pi-check" aria-hidden="true"></i>
+              Create rule
+            </AppButton>
           </div>
         </template>
       </ComponentCard>
@@ -37,7 +53,7 @@ import AdminLayout from '@/components/layout/AdminLayout.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import RuleForm from '@/components/automation/RuleForm.vue'
 import Select from 'primevue/select'
-import Button from 'primevue/button'
+import AppButton from '@/components/ui/AppButton.vue'
 import { toast } from 'vue3-toastify'
 
 const currentPageTitle = ref('New Automation Rule')
@@ -52,6 +68,8 @@ const members = ref([])
 const labels = ref([])
 const errors = reactive({})
 const form = reactive(blankRule(projectId.value))
+
+const goCancel = () => router.push(`/automation?project=${projectId.value}`)
 
 const loadProjectData = async () => {
   if (!projectId.value) return

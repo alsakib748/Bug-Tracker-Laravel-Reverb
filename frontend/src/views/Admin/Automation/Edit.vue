@@ -1,21 +1,28 @@
 <template>
   <AdminLayout>
-    <PageBreadcrumb title="Edit Automation Rule" :pageTitle="currentPageTitle" />
+    <PageBreadcrumb
+      :pageTitle="currentPageTitle"
+      description="Update the trigger, conditions, and actions for this automation rule."
+    />
     <div class="space-y-6">
       <ComponentCard title="Rule builder">
-        <div v-if="automationStore.loading" class="flex items-center gap-2 text-gray-500">
-          <i class="pi pi-spin pi-spinner"></i> Loading rule…
-        </div>
+        <AppSkeleton v-if="automationStore.loading" :rows="6" />
 
         <template v-else-if="automationStore.rule">
-          <RuleForm :form="form" :options="automationStore.options" :members="members" :labels="labels"
-            :errors="errors" />
+          <RuleForm
+            :form="form"
+            :options="automationStore.options"
+            :members="members"
+            :labels="labels"
+            :errors="errors"
+          />
 
-          <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4">
-            <router-link :to="`/automation/${ruleId}`" class="px-4 py-2 border rounded-md hover:bg-gray-50">
-              Cancel
-            </router-link>
-            <Button label="Save changes" icon="pi pi-check" :loading="automationStore.saving" @click="submit" />
+          <div class="mt-6 flex justify-end gap-3 border-t border-line pt-4">
+            <AppButton variant="outline" :onClick="goCancel">Cancel</AppButton>
+            <AppButton :loading="automationStore.saving" :onClick="submit">
+              <i v-if="!automationStore.saving" class="pi pi-check" aria-hidden="true"></i>
+              Save changes
+            </AppButton>
           </div>
         </template>
       </ComponentCard>
@@ -33,7 +40,8 @@ import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import ComponentCard from '@/components/common/ComponentCard.vue'
 import RuleForm from '@/components/automation/RuleForm.vue'
-import Button from 'primevue/button'
+import AppButton from '@/components/ui/AppButton.vue'
+import AppSkeleton from '@/components/common/AppSkeleton.vue'
 import { toast } from 'vue3-toastify'
 
 const currentPageTitle = ref('Edit Automation Rule')
@@ -47,6 +55,8 @@ const members = ref([])
 const labels = ref([])
 const errors = reactive({})
 const form = reactive(blankRule())
+
+const goCancel = () => router.push(`/automation/${ruleId}`)
 
 const loadProjectData = async (projectId) => {
   const [memberList, labelResponse] = await Promise.all([

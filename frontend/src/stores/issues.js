@@ -7,35 +7,47 @@ export const useIssueStore = defineStore('issues', {
     issues: [],
     issue: null,
     loading: false,
+    loadingMore: false,
     pagination: {
       current_page: 1,
       last_page: 1,
-      per_page: 10,
+      per_page: 15,
       total: 0,
     },
   }),
   actions: {
-    async fetchIssues(params = {}) {
-      this.loading = true
+    async fetchIssues(params = {}, { append = false } = {}) {
+      if (append) this.loadingMore = true
+      else this.loading = true
       try {
-        // const response = await api.get('/api/issues', { params })
         const response = await api.get('/issues', { params })
-        // console.log('API response:', response.data)
-        this.issues = response.data.data || []
-        this.pagination = {
-          current_page: response.data.current_page || 1,
-          last_page: response.data.last_page || 1,
-          per_page: response.data.per_page || 10,
-          total: response.data.total || 0,
+        const items = response.data.data || []
+        // ResourceCollection + paginator nests paging under `meta`
+        const meta = response.data.meta || response.data
+        if (append) {
+          const seen = new Set(this.issues.map((issue) => issue.id))
+          this.issues = [...this.issues, ...items.filter((issue) => !seen.has(issue.id))]
+        } else {
+          this.issues = items
         }
-        // console.log('Store issues after assignment: ', this.issues)
+        this.pagination = {
+          current_page: meta.current_page || 1,
+          last_page: meta.last_page || 1,
+          per_page: meta.per_page || 15,
+          total: meta.total || 0,
+        }
         return response.data
       } catch (error) {
         console.error('Failed to fetch issues: ', error)
         throw error
       } finally {
-        this.loading = false
+        if (append) this.loadingMore = false
+        else this.loading = false
       }
+    },
+    removeIssueFromList(id) {
+      this.issues = this.issues.filter((issue) => issue.id !== id)
+      this.pagination.total = Math.max(0, this.pagination.total - 1)
     },
     async fetchIssue(id) {
       this.loading = true

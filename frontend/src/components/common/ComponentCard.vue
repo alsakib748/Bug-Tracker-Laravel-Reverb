@@ -1,10 +1,5 @@
 <template>
-  <div
-    :class="[
-      'rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03]',
-      className,
-    ]"
-  >
+  <div :class="['rounded-card border border-line bg-surface', className]">
     <!-- Card Header -->
     <div class="flex flex-wrap items-start justify-between gap-3 px-6 py-5">
       <div>
@@ -29,14 +24,10 @@
   </div>
 </template>
 
-<script setup lang="ts">
-import { defineProps } from 'vue'
-
-interface Props {
-  title: string
-  className?: string
-  desc?: string
-}
-
-defineProps<Props>()
+<script setup>
+defineProps({
+  title: { type: String, required: true },
+  className: { type: String, default: '' },
+  desc: { type: String, default: '' },
+})
 </script>

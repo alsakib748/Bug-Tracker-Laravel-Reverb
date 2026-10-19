@@ -12,18 +12,12 @@
   </div>
 </template>
 
-<script setup lang="ts">
-interface AvatarProps {
-  src: string
-  alt?: string
-  size?: 'xsmall' | 'small' | 'medium' | 'large' | 'xlarge' | 'xxlarge'
-  status?: 'online' | 'offline' | 'busy' | 'none'
-}
-
-const props = withDefaults(defineProps<AvatarProps>(), {
-  alt: 'User Avatar',
-  size: 'medium',
-  status: 'none',
+<script setup>
+const props = defineProps({
+  src: { type: String, required: true },
+  alt: { type: String, default: 'User Avatar' },
+  size: { type: String, default: 'medium' },
+  status: { type: String, default: 'none' },
 })
 
 const sizeClasses = {
