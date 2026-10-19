@@ -58,10 +58,25 @@ class ActivityLogController extends Controller
             ->map(fn ($user) => [
                 'id' => $user->id,
                 'name' => $user->name,
-                'avatar' => $user->avatar,
+                'avatar' => $this->assetAvatar($user->avatar),
             ]);
 
         return response()->json(['data' => $users]);
+    }
+
+    /**
+     * Turn a stored avatar path ("avatars/x.png") into a public URL.
+     * Absolute URLs (external avatars) are returned untouched.
+     */
+    protected function assetAvatar(?string $avatar): ?string
+    {
+        if (!$avatar || preg_match('/^(https?:)?\/\//', $avatar)) {
+            return $avatar;
+        }
+
+        return str_starts_with($avatar, 'storage/')
+            ? asset($avatar)
+            : asset('storage/' . ltrim($avatar, '/'));
     }
 
     protected function scopeByVisibility($query, Request $request)

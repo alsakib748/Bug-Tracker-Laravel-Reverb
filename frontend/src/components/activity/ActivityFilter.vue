@@ -1,28 +1,20 @@
 <template>
-  <div
-    class="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-white/[0.02]"
-  >
+  <div class="rounded-xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-white/[0.02]">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
       <div class="flex items-center gap-2">
         <span
-          class="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-gray-200 dark:bg-white/5 dark:ring-gray-800"
-        >
+          class="flex h-7 w-7 items-center justify-center rounded-lg bg-white shadow-sm ring-1 ring-gray-200 dark:bg-white/5 dark:ring-gray-800">
           <i class="pi pi-filter text-xs text-gray-500 dark:text-gray-400"></i>
         </span>
         <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Filters</span>
-        <span
-          v-if="activeCount"
-          class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white"
-        >
+        <span v-if="activeCount"
+          class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[11px] font-semibold text-white">
           {{ activeCount }}
         </span>
       </div>
-      <button
-        v-if="activeCount"
-        type="button"
+      <button v-if="activeCount" type="button"
         class="inline-flex items-center gap-1 text-xs font-medium text-gray-500 transition hover:text-error-600 dark:text-gray-400 dark:hover:text-error-400"
-        @click="clearAll"
-      >
+        @click="clearAll">
         <i class="pi pi-times"></i>
         Clear all
       </button>
@@ -30,74 +22,35 @@
 
     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <div class="relative">
-        <i
-          class="pi pi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"
-        ></i>
-        <InputText
-          v-model="filters.search"
-          placeholder="Search activity..."
-          class="w-full !pl-9"
-          @input="apply"
-        />
+        <i class="pi pi-search pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400"></i>
+        <InputText v-model="filters.search" placeholder="Search activity..." class="w-full !pl-9" @input="apply" />
       </div>
 
-      <Select
-        v-model="filters.action"
-        :options="ACTION_FILTER_GROUPS"
-        optionLabel="label"
-        optionValue="value"
-        optionGroupLabel="label"
-        optionGroupChildren="options"
-        placeholder="All actions"
-        showClear
-        class="w-full"
-        @change="apply"
-      />
+      <Select v-model="filters.action" :options="ACTION_FILTER_GROUPS" optionLabel="label" optionValue="value"
+        optionGroupLabel="label" optionGroupChildren="options" placeholder="All actions" showClear class="w-full"
+        @change="apply" />
 
-      <Select
-        v-model="filters.user_id"
-        :options="usersList"
-        optionLabel="name"
-        optionValue="id"
-        placeholder="All users"
-        showClear
-        class="w-full"
-        @change="apply"
-      >
+      <Select v-model="filters.user_id" :options="usersList" optionLabel="name" optionValue="id" placeholder="All users"
+        showClear class="w-full" @change="apply">
         <template #value="{ value, placeholder }">
           <div v-if="value" class="flex items-center">
-            <img
-              :src="selectedUser?.avatar || '/images/avatar.jpg'"
-              @error="onAvatarError"
-              alt=""
-              class="mr-2 h-6 w-6 rounded-full object-cover"
-            />
+            <img :src="selectedUser?.avatar || '/images/avatar.jpg'" @error="onAvatarError" alt=""
+              class="mr-2 h-6 w-6 rounded-full object-cover" />
             <span>{{ selectedUser?.name || `User #${value}` }}</span>
           </div>
           <span v-else class="text-gray-500">{{ placeholder }}</span>
         </template>
         <template #option="{ option }">
           <div class="flex items-center">
-            <img
-              :src="option.avatar || '/images/avatar.jpg'"
-              @error="onAvatarError"
-              alt=""
-              class="mr-2 h-6 w-6 rounded-full object-cover"
-            />
+            <img :src="option.avatar || '/images/avatar.jpg'" @error="onAvatarError" alt=""
+              class="mr-2 h-6 w-6 rounded-full object-cover" />
             <span>{{ option.name }}</span>
           </div>
         </template>
       </Select>
 
-      <DatePicker
-        v-model="filters.date"
-        selectionMode="range"
-        placeholder="Date range"
-        dateFormat="yy-mm-dd"
-        showIcon
-        class="w-full"
-        @update:modelValue="apply"
-      />
+      <DatePicker v-model="filters.date" selectionMode="range" placeholder="Date range" dateFormat="yy-mm-dd" showIcon
+        class="w-full" @update:modelValue="apply" />
     </div>
   </div>
 </template>

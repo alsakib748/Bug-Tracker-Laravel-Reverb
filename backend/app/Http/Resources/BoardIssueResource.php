@@ -33,7 +33,7 @@ class BoardIssueResource extends JsonResource
             'assignee' => $this->whenLoaded('assignee', fn () => $this->assignee ? [
                 'id' => $this->assignee->id,
                 'name' => $this->assignee->name,
-                'avatar' => $this->assignee->avatar,
+                'avatar' => $this->assetAvatar($this->assignee->avatar),
             ] : null),
             'labels' => $this->whenLoaded('labels', fn () => $this->labels->map(fn ($label) => [
                 'id' => $label->id,
@@ -43,5 +43,20 @@ class BoardIssueResource extends JsonResource
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];
+    }
+
+    /**
+     * Turn a stored avatar path ("avatars/x.png") into a public URL.
+     * Absolute URLs (external avatars) are returned untouched.
+     */
+    protected function assetAvatar(?string $avatar): ?string
+    {
+        if (!$avatar || preg_match('/^(https?:)?\/\//', $avatar)) {
+            return $avatar;
+        }
+
+        return str_starts_with($avatar, 'storage/')
+            ? asset($avatar)
+            : asset('storage/' . ltrim($avatar, '/'));
     }
 }

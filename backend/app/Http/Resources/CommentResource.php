@@ -14,6 +14,14 @@ class CommentResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $avatar = $this->user->avatar ?? null;
+
+        if ($avatar && !preg_match('/^(https?:)?\/\//', $avatar)) {
+            $avatar = str_starts_with($avatar, 'storage/')
+                ? asset($avatar)
+                : asset('storage/' . ltrim($avatar, '/'));
+        }
+
         return [
             'id' => $this->id,
             'comment' => $this->comment,
@@ -22,7 +30,7 @@ class CommentResource extends JsonResource
             'updated_at' => $this->updated_at->toISOString(),
             'user_id' => $this->user_id,
             'user_name' => $this->user->name ?? null,
-            'user_avatar' => $this->user->avatar ?? null,
+            'user_avatar' => $avatar,
         ];
     }
 }
