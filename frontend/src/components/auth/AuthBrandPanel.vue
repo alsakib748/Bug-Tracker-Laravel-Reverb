@@ -1,6 +1,6 @@
 <template>
   <div
-    class="relative items-center hidden w-full h-full overflow-hidden bg-gradient-to-br from-brand-900 via-brand-950 to-slate-950 lg:w-1/2 lg:grid"
+    class="relative hidden h-screen w-full items-center overflow-hidden bg-gradient-to-br from-brand-900 via-brand-950 to-slate-950 lg:flex lg:w-1/2"
   >
     <div
       class="pointer-events-none absolute -left-20 -top-24 h-80 w-80 rounded-full bg-brand-500/30 blur-3xl auth-orb"
@@ -17,19 +17,19 @@
 
     <common-grid-shape />
 
-    <div class="relative z-10 flex flex-col items-center w-full max-w-md px-8 mx-auto">
-      <router-link to="/" class="block mb-5">
-        <img width="220" height="40" src="/images/logo/auth-logo.svg" alt="Traceflow" />
+    <div class="relative z-10 flex w-full max-w-sm flex-col items-center px-6 mx-auto">
+      <router-link to="/" class="block mb-4">
+        <img width="200" height="36" src="/images/logo/auth-logo.svg" alt="Traceflow" />
       </router-link>
-      <p class="mb-10 text-lg font-medium text-center text-white/75">From issue to insight.</p>
+      <p class="mb-6 text-base font-medium text-center text-white/80">From issue to insight.</p>
 
-      <ul class="w-full space-y-4">
-        <li v-for="feature in features" :key="feature" class="flex items-start gap-3">
+      <ul class="w-full space-y-3">
+        <li v-for="feature in features" :key="feature" class="flex items-start gap-2.5">
           <span
-            class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-500/20 ring-1 ring-brand-400/30"
+            class="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-500/20 ring-1 ring-brand-400/30"
           >
             <svg
-              class="h-3.5 w-3.5 text-brand-300"
+              class="h-3 w-3 text-brand-300"
               viewBox="0 0 14 14"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
@@ -43,7 +43,7 @@
               />
             </svg>
           </span>
-          <span class="text-sm leading-relaxed text-white/70">{{ feature }}</span>
+          <span class="text-sm leading-snug text-white/70">{{ feature }}</span>
         </li>
       </ul>
 

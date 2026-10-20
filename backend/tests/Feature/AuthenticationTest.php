@@ -55,37 +55,6 @@ class AuthenticationTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_registration_creates_a_user(): void
-    {
-        $response = $this->postJson('/api/register', [
-            'name' => 'New Person',
-            'email' => 'new@example.com',
-            'password' => 'secret-password',
-        ]);
-
-        $response->assertSuccessful();
-        $response->assertJsonPath('data.email', 'new@example.com');
-
-        $this->assertDatabaseHas('users', [
-            'email' => 'new@example.com',
-            'name' => 'New Person',
-        ]);
-
-        // Self-registered users are assigned the Reporter role.
-        $this->assertTrue(
-            User::where('email', 'new@example.com')->first()->hasRole('Reporter')
-        );
-    }
-
-    public function test_registration_requires_a_valid_payload(): void
-    {
-        $this->postJson('/api/register', [
-            'name' => '',
-            'email' => 'not-an-email',
-            'password' => '123',
-        ])->assertStatus(422);
-    }
-
     public function test_protected_routes_reject_unauthenticated_requests(): void
     {
         $this->getJson('/api/issues')->assertStatus(401);

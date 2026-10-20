@@ -6,6 +6,7 @@ export const useUserStore = defineStore('users', {
     users: [],
     user: null,
     loading: false,
+    loadingMore: false,
     pagination: {
       current_page: 1,
       last_page: 1,
@@ -14,25 +15,38 @@ export const useUserStore = defineStore('users', {
     },
   }),
   actions: {
-    async fetchUsers(params = {}) {
-      this.loading = true
+    async fetchUsers(params = {}, { append = false } = {}) {
+      if (append) this.loadingMore = true
+      else this.loading = true
       try {
-        // const response = await api.get('/api/users', { params })
         const response = await api.get('/users', { params })
-        this.users = [...(response.data.data || [])]
+        const items = response.data.data || []
+        // ResourceCollection + paginator nests paging under `meta`
+        const meta = response.data.meta || response.data
+        if (append) {
+          const seen = new Set(this.users.map((user) => user.id))
+          this.users = [...this.users, ...items.filter((user) => !seen.has(user.id))]
+        } else {
+          this.users = items
+        }
         this.pagination = {
-          current_page: response.data.meta?.current_page || 1,
-          last_page: response.data.meta?.last_page || 1,
-          per_page: response.data.meta?.per_page || 15,
-          total: response.data.meta?.total || 0,
+          current_page: meta.current_page || 1,
+          last_page: meta.last_page || 1,
+          per_page: meta.per_page || 15,
+          total: meta.total || 0,
         }
         return response.data
       } catch (error) {
         console.error('Failed to fetch users:', error)
         throw error
       } finally {
-        this.loading = false
+        if (append) this.loadingMore = false
+        else this.loading = false
       }
+    },
+    removeUserFromList(id) {
+      this.users = this.users.filter((user) => user.id !== id)
+      this.pagination.total = Math.max(0, this.pagination.total - 1)
     },
     /**
      * Minimal, permission-light list of users for filtering activity logs.

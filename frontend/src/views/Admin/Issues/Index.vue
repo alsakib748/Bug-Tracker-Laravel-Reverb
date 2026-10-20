@@ -365,8 +365,10 @@ let lastParams = {}
 const subscribedProjects = new Set()
 
 const refreshFromRealtime = debounce(() => {
-  // Refetch everything currently loaded in one request so scroll depth is kept.
-  const loaded = Math.max(issues.value.length, PER_PAGE)
+  // Refetch everything currently loaded in one request so scroll depth is
+  // kept, but cap the size so a long scroll session cannot amplify a burst
+  // of realtime events into an unbounded single request.
+  const loaded = Math.min(Math.max(issues.value.length, PER_PAGE), 50)
   fetchIssues({ ...buildFilterParams(), sort: lastParams.sort || '-id', page: 1, per_page: loaded })
 })
 
@@ -382,6 +384,7 @@ const syncProjectSubscriptions = () => {
       .private(`project.${id}`)
       .listen('.issue.created', refreshFromRealtime)
       .listen('.issue.updated', refreshFromRealtime)
+      .listen('.issue.assigned', refreshFromRealtime)
       .listen('.issue.deleted', refreshFromRealtime)
   })
 

@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Events\Concerns\BroadcastsToProjectAudience;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
@@ -10,7 +11,7 @@ use Illuminate\Queue\SerializesModels;
 
 class IssueDeleted implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use BroadcastsToProjectAudience, Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
         public int $issueId,
@@ -24,10 +25,13 @@ class IssueDeleted implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return [
-            new PrivateChannel('issue.'.$this->issueId),
-            new PrivateChannel('project.'.$this->projectId),
-        ];
+        return array_merge(
+            [
+                new PrivateChannel('issue.'.$this->issueId),
+                new PrivateChannel('project.'.$this->projectId),
+            ],
+            $this->projectAudienceChannels($this->projectId),
+        );
     }
 
     public function broadcastAs(): string

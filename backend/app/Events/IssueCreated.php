@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Events\Concerns\BroadcastsToProjectAudience;
 use App\Http\Resources\IssueResource;
 use App\Models\Issue;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -12,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 
 class IssueCreated implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use BroadcastsToProjectAudience, Dispatchable, InteractsWithSockets, SerializesModels;
 
     // public Issue $issue;
 
@@ -34,11 +35,14 @@ class IssueCreated implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return [
-            new PrivateChannel(
-                'project.'.$this->issue->project_id
-            ),
-        ];
+        return array_merge(
+            [
+                new PrivateChannel(
+                    'project.'.$this->issue->project_id
+                ),
+            ],
+            $this->projectAudienceChannels($this->issue->project_id),
+        );
     }
 
     public function broadcastAs(): string

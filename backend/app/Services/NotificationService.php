@@ -8,6 +8,8 @@ use App\Models\Issue;
 use App\Models\Project;
 use App\Models\User;
 use App\Notifications\SystemNotification;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class NotificationService
@@ -35,20 +37,42 @@ class NotificationService
 
     private function notifyProjectMembers(Project $project, string $type, array $data, ?int $excludeUserId = null): void
     {
-        $project->members()
+        $recipients = $project->members()
             ->get()
             ->unique('id')
-            ->each(function (User $recipient) use ($type, $data, $excludeUserId) {
-                if (
-                    $excludeUserId !== null &&
-                    $recipient->id === $excludeUserId
-                ) {
-                    return;
-                }
+            ->reject(fn (User $recipient) => $excludeUserId !== null && $recipient->id === $excludeUserId);
 
-                $this->notifyUser($recipient, $type, $data);
-            });
+        if ($recipients->isEmpty()) {
+            return;
+        }
 
+        $now = now();
+
+        // Build every row in memory, then persist them with a single bulk
+        // INSERT instead of one query per member. toDatabase() ignores the
+        // recipient, so the payload is identical across rows; only the
+        // notifiable (and the generated id) differ.
+        $records = $recipients->map(function (User $recipient) use ($type, $data, $now) {
+            $record = new DatabaseNotification();
+            $record->forceFill([
+                'id' => (string) Str::uuid(),
+                'notifiable_type' => $recipient->getMorphClass(),
+                'notifiable_id' => $recipient->getKey(),
+                'type' => SystemNotification::class,
+                'data' => (new SystemNotification($type, $data))->toDatabase($recipient),
+                'read_at' => null,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            return $record;
+        });
+
+        DB::table('notifications')->insert(
+            $records->map(fn (DatabaseNotification $record) => $record->getAttributes())->all()
+        );
+
+        $records->each(fn (DatabaseNotification $record) => event(new NotificationCreated($record)));
     }
 
     /**

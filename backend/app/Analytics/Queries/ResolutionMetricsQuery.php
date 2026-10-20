@@ -4,8 +4,9 @@ namespace App\Analytics\Queries;
 
 use App\Analytics\DTOs\AnalyticsFilters;
 use App\Analytics\Support\MetricDefinitions;
-use App\Models\Issue;
+use App\Analytics\Support\SqlDialect;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ResolutionMetricsQuery
 {
@@ -17,30 +18,32 @@ class ResolutionMetricsQuery
      * reported separately via the legacy_sample_size/coverage keys so callers
      * can judge accuracy.
      *
+     * Durations are computed in SQL (driver-aware) so only small numeric
+     * values cross the database boundary; only the median itself stays in PHP.
+     *
      * @return array{median_hours: float|null, sample_size: int, legacy_sample_size: int, coverage: string}
      */
     public function medianResolutionHours(AnalyticsFilters $filters): array
     {
-        $scoped = fn () => Issue::query()
-            ->when($filters->projectIds !== [], fn ($q) => $q->whereIn('project_id', $filters->projectIds))
-            ->whereIn('status', MetricDefinitions::allResolvedStatuses());
+        $modern = $this->durations(
+            $filters,
+            fn ($query) => $query
+                ->whereNotNull('resolved_at')
+                ->where('resolved_at', '>=', $filters->periodStart)
+                ->where('resolved_at', '<', $filters->periodEnd),
+            'resolved_at',
+        );
 
-        $modern = $scoped()
-            ->whereNotNull('resolved_at')
-            ->where('resolved_at', '>=', $filters->periodStart)
-            ->where('resolved_at', '<', $filters->periodEnd)
-            ->get(['created_at', 'resolved_at']);
+        $legacy = $this->durations(
+            $filters,
+            fn ($query) => $query
+                ->whereNull('resolved_at')
+                ->where('updated_at', '>=', $filters->periodStart)
+                ->where('updated_at', '<', $filters->periodEnd),
+            'updated_at',
+        );
 
-        $legacy = $scoped()
-            ->whereNull('resolved_at')
-            ->where('updated_at', '>=', $filters->periodStart)
-            ->where('updated_at', '<', $filters->periodEnd)
-            ->get(['created_at', 'updated_at']);
-
-        $modernDurations = $this->durations($modern->pluck('resolved_at'), $modern->pluck('created_at'));
-        $legacyDurations = $this->durations($legacy->pluck('updated_at'), $legacy->pluck('created_at'));
-
-        $all = $modernDurations->concat($legacyDurations)->sort()->values();
+        $all = $modern->concat($legacy)->sort()->values();
 
         if ($all->isEmpty()) {
             return [
@@ -54,80 +57,114 @@ class ResolutionMetricsQuery
         return [
             'median_hours' => round($this->median($all), 1),
             'sample_size' => $all->count(),
-            'legacy_sample_size' => $legacyDurations->count(),
-            'coverage' => $legacyDurations->isEmpty() ? 'complete' : 'estimated',
+            'legacy_sample_size' => $legacy->count(),
+            'coverage' => $legacy->isEmpty() ? 'complete' : 'estimated',
         ];
     }
 
     /**
-     * Created vs resolved series for a period, bucketed in PHP so the metric
-     * works identically on MySQL and SQLite.
+     * Created vs resolved series for a period. Buckets are aggregated per day
+     * in SQL, then folded into the requested granularity in PHP so week/month
+     * labels match the API contract on both MySQL and SQLite.
      *
      * @return array{buckets: list<string>, created: list<int>, resolved: list<int>}
      */
     public function createdVsResolved(AnalyticsFilters $filters, string $granularity = 'day'): array
     {
-        $scope = fn ($query) => $filters->projectIds !== []
-            ? $query->whereIn('project_id', $filters->projectIds)
-            : $query;
+        $created = $this->dailyCounts(
+            $filters,
+            'created_at',
+            fn ($query) => $query
+                ->where('created_at', '>=', $filters->periodStart)
+                ->where('created_at', '<', $filters->periodEnd),
+        );
 
-        $created = $scope(Issue::query())
-            ->where('created_at', '>=', $filters->periodStart)
-            ->where('created_at', '<', $filters->periodEnd)
-            ->get(['created_at'])
-            ->countBy(fn (Issue $issue) => $this->bucket($issue->created_at, $granularity));
+        $resolvedModern = $this->dailyCounts(
+            $filters,
+            'resolved_at',
+            fn ($query) => $query
+                ->whereIn('status', MetricDefinitions::allResolvedStatuses())
+                ->whereNotNull('resolved_at')
+                ->where('resolved_at', '>=', $filters->periodStart)
+                ->where('resolved_at', '<', $filters->periodEnd),
+        );
 
-        $resolvedModern = $scope(Issue::query())
-            ->whereIn('status', MetricDefinitions::allResolvedStatuses())
-            ->whereNotNull('resolved_at')
-            ->where('resolved_at', '>=', $filters->periodStart)
-            ->where('resolved_at', '<', $filters->periodEnd)
-            ->get(['resolved_at'])
-            ->countBy(fn (Issue $issue) => $this->bucket($issue->resolved_at, $granularity));
+        $resolvedLegacy = $this->dailyCounts(
+            $filters,
+            'updated_at',
+            fn ($query) => $query
+                ->whereIn('status', MetricDefinitions::allResolvedStatuses())
+                ->whereNull('resolved_at')
+                ->where('updated_at', '>=', $filters->periodStart)
+                ->where('updated_at', '<', $filters->periodEnd),
+        );
 
-        $resolvedLegacy = $scope(Issue::query())
-            ->whereIn('status', MetricDefinitions::allResolvedStatuses())
-            ->whereNull('resolved_at')
-            ->where('updated_at', '>=', $filters->periodStart)
-            ->where('updated_at', '<', $filters->periodEnd)
-            ->get(['updated_at'])
-            ->countBy(fn (Issue $issue) => $this->bucket($issue->updated_at, $granularity));
+        $createdBuckets = SqlDialect::bucketDays($created, $granularity);
 
-        $resolved = $resolvedModern->merge($resolvedLegacy);
+        $resolvedBuckets = SqlDialect::bucketDays($resolvedModern, $granularity);
+        foreach (SqlDialect::bucketDays($resolvedLegacy, $granularity) as $label => $count) {
+            $resolvedBuckets[$label] = ($resolvedBuckets[$label] ?? 0) + $count;
+        }
+        ksort($resolvedBuckets);
 
-        $buckets = $created->keys()
-            ->merge($resolved->keys())
+        $buckets = collect(array_keys($createdBuckets))
+            ->merge(array_keys($resolvedBuckets))
             ->unique()
             ->sort()
             ->values();
 
         return [
             'buckets' => $buckets->all(),
-            'created' => $buckets->map(fn ($bucket) => (int) ($created[$bucket] ?? 0))->all(),
-            'resolved' => $buckets->map(fn ($bucket) => (int) ($resolved[$bucket] ?? 0))->all(),
+            'created' => $buckets->map(fn ($bucket) => (int) ($createdBuckets[$bucket] ?? 0))->all(),
+            'resolved' => $buckets->map(fn ($bucket) => (int) ($resolvedBuckets[$bucket] ?? 0))->all(),
         ];
     }
 
     /**
-     * @param  Collection<int, \Carbon\Carbon|null>  $ends
-     * @param  Collection<int, \Carbon\Carbon|null>  $starts
+     * Resolution durations (hours) for issues resolved in the scoped period.
+     *
+     * @param  callable(\Illuminate\Database\Query\Builder): \Illuminate\Database\Query\Builder  $constrain
      * @return Collection<int, float>
      */
-    protected function durations(Collection $ends, Collection $starts): Collection
+    protected function durations(AnalyticsFilters $filters, callable $constrain, string $endColumn): Collection
     {
-        return $ends
-            ->zip($starts)
-            ->map(function ($pair) {
-                [$end, $start] = $pair;
+        $query = DB::table('issues')
+            ->when($filters->projectIds !== [], fn ($q) => $q->whereIn('project_id', $filters->projectIds))
+            ->whereIn('status', MetricDefinitions::allResolvedStatuses());
 
-                if (! $end || ! $start) {
-                    return null;
-                }
+        $query = $constrain($query);
 
-                return abs((float) $start->diffInMinutes($end)) / 60;
-            })
-            ->filter(fn ($hours) => $hours !== null && $hours >= 0)
+        return $query
+            ->selectRaw(SqlDialect::minutesBetween('created_at', $endColumn).' as minutes')
+            ->pluck('minutes')
+            ->filter(fn ($minutes) => $minutes !== null)
+            ->map(fn ($minutes) => (float) $minutes / 60)
             ->values();
+    }
+
+    /**
+     * Daily counts keyed by "Y-m-d".
+     *
+     * @param  callable(\Illuminate\Database\Query\Builder): \Illuminate\Database\Query\Builder  $constrain
+     * @return array<string, int>
+     */
+    protected function dailyCounts(AnalyticsFilters $filters, string $dateColumn, callable $constrain): array
+    {
+        $query = DB::table('issues')
+            ->when($filters->projectIds !== [], fn ($q) => $q->whereIn('project_id', $filters->projectIds));
+
+        $query = $constrain($query);
+
+        $counts = [];
+
+        foreach ($query
+            ->selectRaw(SqlDialect::date($dateColumn).' as bucket, COUNT(*) as total')
+            ->groupBy('bucket')
+            ->get() as $row) {
+            $counts[(string) $row->bucket] = (int) $row->total;
+        }
+
+        return $counts;
     }
 
     /**
@@ -143,14 +180,5 @@ class ResolutionMetricsQuery
         }
 
         return ((float) $values[$middle - 1] + (float) $values[$middle]) / 2;
-    }
-
-    protected function bucket($value, string $granularity): string
-    {
-        return match ($granularity) {
-            'week' => $value->isoFormat('GGGG-[W]WW'),
-            'month' => $value->format('Y-m'),
-            default => $value->format('Y-m-d'),
-        };
     }
 }

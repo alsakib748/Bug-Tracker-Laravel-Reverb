@@ -76,7 +76,9 @@ class ProjectService
             abort(403, 'You are not allowed to view this project.');
         }
 
-        return $project->load(['creator', 'members', 'issues']);
+        // The resource only serializes whenCounted('issues'); loading the full
+        // issues collection here was an unbounded, wasted query.
+        return $project->load(['creator', 'members'])->loadCount('issues');
     }
 
     public function updateProject(Project $project, array $data): Project

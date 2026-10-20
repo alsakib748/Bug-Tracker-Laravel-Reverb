@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Events\Concerns\BroadcastsToProjectAudience;
 use App\Models\Issue;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -12,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 
 class IssueAssigned implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use BroadcastsToProjectAudience, Dispatchable, InteractsWithSockets, SerializesModels;
 
     // public Issue $issue;
 
@@ -34,14 +35,24 @@ class IssueAssigned implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return [
-            new PrivateChannel(
-                'issue.'.$this->issue->id,
-            ),
-            new PrivateChannel(
-                'user.'.$this->assignedTo
-            ),
-        ];
+        return array_merge(
+            [
+                new PrivateChannel(
+                    'issue.'.$this->issue->id,
+                ),
+                new PrivateChannel(
+                    'user.'.$this->assignedTo
+                ),
+                // Lists/boards/dashboard refresh on the project channel; without
+                // this, assignment-only changes were invisible outside the detail
+                // view (and Dashboard's issue.assigned subscription was dead code).
+                new PrivateChannel(
+                    'project.'.$this->issue->project_id
+                ),
+            ],
+            // Assignee already has a channel above, so exclude them here.
+            $this->projectAudienceChannels($this->issue->project_id, [$this->assignedTo]),
+        );
     }
 
     public function broadcastAs(): string

@@ -21,11 +21,14 @@ class CommentController extends Controller
         $this->commentService = $commentService;
     }
 
-    public function index(Issue $issue)
+    public function index(Request $request, Issue $issue)
     {
         $this->authorize('viewAny', [Comment::class, $issue]);
 
-        $comments = $this->commentService->getCommentByIssue($issue);
+        $comments = $this->commentService->getCommentByIssue(
+            $issue,
+            min(max((int) $request->get('per_page', 50), 1), 100),
+        );
 
         return CommentResource::collection($comments);
 

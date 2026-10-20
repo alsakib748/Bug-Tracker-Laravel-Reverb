@@ -4,8 +4,7 @@ namespace App\Analytics\Queries;
 
 use App\Analytics\DTOs\AnalyticsFilters;
 use App\Analytics\Support\MetricDefinitions;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
+use App\Analytics\Support\SqlDialect;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -13,9 +12,9 @@ use Illuminate\Support\Facades\DB;
  * (pull requests, commits and their issue links). These are pure counts and
  * durations — interpretation happens in the AI insight layer, never here.
  *
- * Durations and week buckets are computed in PHP (rather than via MySQL-only
- * functions such as TIMESTAMPDIFF/DATE_FORMAT) so the metrics behave
- * identically on MySQL and SQLite.
+ * Durations are computed in SQL (driver-aware) and throughput is aggregated
+ * per day in SQL, then folded into ISO week labels in PHP so the metrics
+ * behave identically on MySQL and SQLite.
  */
 class GitHubAnalyticsQuery
 {
@@ -50,10 +49,11 @@ class GitHubAnalyticsQuery
             ->whereNotNull('github_pull_requests.opened_at')
             ->where('issues.created_at', '>=', $filters->periodStart)
             ->where('issues.created_at', '<', $filters->periodEnd)
-            ->select('issues.created_at', 'github_pull_requests.opened_at')
-            ->get()
-            ->map(fn ($row) => $this->hoursBetween($row->created_at, $row->opened_at))
-            ->filter(fn ($hours) => $hours !== null && $hours >= 0)
+            ->selectRaw(SqlDialect::secondsBetween('issues.created_at', 'github_pull_requests.opened_at').' as seconds')
+            ->pluck('seconds')
+            ->filter(fn ($seconds) => $seconds !== null)
+            ->map(fn ($seconds) => (float) $seconds / 3600)
+            ->filter(fn ($hours) => $hours >= 0)
             ->sort()
             ->values();
 
@@ -102,41 +102,36 @@ class GitHubAnalyticsQuery
      */
     public function prThroughput(AnalyticsFilters $filters): array
     {
-        $opened = $this->weeklyBuckets(
-            $this->scopeProjects(
-                DB::table('github_pull_requests')
-                    ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id'),
-                $filters,
-                'github_project_repositories.project_id'
-            )
+        $opened = $this->prDailyCounts(
+            $filters,
+            'opened_at',
+            fn ($query) => $query
                 ->where('github_pull_requests.opened_at', '>=', $filters->periodStart)
-                ->where('github_pull_requests.opened_at', '<', $filters->periodEnd)
-                ->pluck('github_pull_requests.opened_at'),
+                ->where('github_pull_requests.opened_at', '<', $filters->periodEnd),
         );
 
-        $merged = $this->weeklyBuckets(
-            $this->scopeProjects(
-                DB::table('github_pull_requests')
-                    ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id'),
-                $filters,
-                'github_project_repositories.project_id'
-            )
+        $merged = $this->prDailyCounts(
+            $filters,
+            'merged_at',
+            fn ($query) => $query
                 ->whereNotNull('github_pull_requests.merged_at')
                 ->where('github_pull_requests.merged_at', '>=', $filters->periodStart)
-                ->where('github_pull_requests.merged_at', '<', $filters->periodEnd)
-                ->pluck('github_pull_requests.merged_at'),
+                ->where('github_pull_requests.merged_at', '<', $filters->periodEnd),
         );
 
-        $buckets = collect(array_keys($opened))
-            ->merge(array_keys($merged))
+        $openedBuckets = SqlDialect::bucketDays($opened, 'week');
+        $mergedBuckets = SqlDialect::bucketDays($merged, 'week');
+
+        $buckets = collect(array_keys($openedBuckets))
+            ->merge(array_keys($mergedBuckets))
             ->unique()
             ->sort()
             ->values();
 
         return [
             'buckets' => $buckets->all(),
-            'opened' => $buckets->map(fn ($bucket) => (int) ($opened[$bucket] ?? 0))->all(),
-            'merged' => $buckets->map(fn ($bucket) => (int) ($merged[$bucket] ?? 0))->all(),
+            'opened' => $buckets->map(fn ($bucket) => (int) ($openedBuckets[$bucket] ?? 0))->all(),
+            'merged' => $buckets->map(fn ($bucket) => (int) ($mergedBuckets[$bucket] ?? 0))->all(),
         ];
     }
 
@@ -147,20 +142,16 @@ class GitHubAnalyticsQuery
      */
     public function prMergeDuration(AnalyticsFilters $filters): array
     {
-        $durations = $this->scopeProjects(
-            DB::table('github_pull_requests')
-                ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id'),
-            $filters,
-            'github_project_repositories.project_id'
-        )
+        $durations = $this->prQuery($filters)
             ->whereNotNull('github_pull_requests.merged_at')
             ->whereNotNull('github_pull_requests.opened_at')
             ->where('github_pull_requests.merged_at', '>=', $filters->periodStart)
             ->where('github_pull_requests.merged_at', '<', $filters->periodEnd)
-            ->select('github_pull_requests.opened_at', 'github_pull_requests.merged_at')
-            ->get()
-            ->map(fn ($row) => $this->hoursBetween($row->opened_at, $row->merged_at))
-            ->filter(fn ($hours) => $hours !== null && $hours >= 0)
+            ->selectRaw(SqlDialect::secondsBetween('github_pull_requests.opened_at', 'github_pull_requests.merged_at').' as seconds')
+            ->pluck('seconds')
+            ->filter(fn ($seconds) => $seconds !== null)
+            ->map(fn ($seconds) => (float) $seconds / 3600)
+            ->filter(fn ($hours) => $hours >= 0)
             ->sort()
             ->values();
 
@@ -190,37 +181,39 @@ class GitHubAnalyticsQuery
     }
 
     /**
-     * Signed hours between two timestamps (to - from).
+     * Base query over pull requests, scoped to the filtered projects.
+     *
+     * @return \Illuminate\Database\Query\Builder
      */
-    protected function hoursBetween(mixed $from, mixed $to): ?float
+    protected function prQuery(AnalyticsFilters $filters)
     {
-        if ($from === null || $to === null) {
-            return null;
-        }
-
-        return (Carbon::parse($to)->timestamp - Carbon::parse($from)->timestamp) / 3600;
+        return $this->scopeProjects(
+            DB::table('github_pull_requests')
+                ->join('github_project_repositories', 'github_project_repositories.github_repository_id', '=', 'github_pull_requests.github_repository_id'),
+            $filters,
+            'github_project_repositories.project_id',
+        );
     }
 
     /**
-     * Bucket a list of timestamps into ISO week labels ("o-\WW", e.g. 2026-W42).
+     * Daily counts of a pull request timestamp column, keyed by "Y-m-d".
      *
-     * @param  Collection<int, mixed>  $timestamps
+     * @param  callable(\Illuminate\Database\Query\Builder): \Illuminate\Database\Query\Builder  $constrain
      * @return array<string, int>
      */
-    protected function weeklyBuckets(Collection $timestamps): array
+    protected function prDailyCounts(AnalyticsFilters $filters, string $column, callable $constrain): array
     {
+        $query = $this->prQuery($filters);
+        $query = $constrain($query);
+
         $counts = [];
 
-        foreach ($timestamps as $timestamp) {
-            if ($timestamp === null) {
-                continue;
-            }
-
-            $bucket = Carbon::parse($timestamp)->format('o-\WW');
-            $counts[$bucket] = ($counts[$bucket] ?? 0) + 1;
+        foreach ($query
+            ->selectRaw(SqlDialect::date($column).' as bucket, COUNT(*) as total')
+            ->groupBy('bucket')
+            ->get() as $row) {
+            $counts[(string) $row->bucket] = (int) $row->total;
         }
-
-        ksort($counts);
 
         return $counts;
     }

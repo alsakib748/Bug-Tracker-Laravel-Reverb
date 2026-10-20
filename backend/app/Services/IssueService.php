@@ -58,8 +58,12 @@ class IssueService
                     ->whereIn('status', ['open', 'assigned', 'in_progress', 'code_review', 'testing', 'reopened'])
             )
             ->when($filters['search'] ?? null, function ($q, $search) {
-                $q->where('title', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
+                // Group the OR so it cannot escape the visibility scope and
+                // the other filters (was a full-scan + authorization bypass).
+                $q->where(function ($w) use ($search) {
+                    $w->where('title', 'like', "%{$search}%")
+                        ->orWhere('description', 'like', "%{$search}%");
+                });
             })
             ->when($filters['sort'] ?? null, function ($q, $sort) {
                 $direction = 'asc';
@@ -67,7 +71,10 @@ class IssueService
                     $direction = 'desc';
                     $sort = substr($sort, 1);
                 }
-                $q->orderBy($sort, $direction);
+                $allowed = ['id', 'created_at', 'updated_at', 'due_date', 'status', 'priority', 'severity', 'type', 'title'];
+                if (in_array($sort, $allowed, true)) {
+                    $q->orderBy($sort, $direction);
+                }
             }, fn ($q) => $q->orderBy('id', 'desc'));
 
         return $query->paginate($perPage);
@@ -222,12 +229,10 @@ class IssueService
             auth()->id(),
         ));
 
-        event(new IssueUpdated(
-            $issue->load(['project', 'reporter', 'assignee']),
-            [],
-            (string) Str::uuid(),
-            auth()->id(),
-        ));
+        // IssueUpdated is intentionally not dispatched here: automation rules
+        // handle the dedicated issue.assigned trigger, and the broadcast now
+        // also reaches project channels, so lists/boards refresh without a
+        // second per-assignment broadcast.
 
         $this->activityLogService->logIssueAssigned($issue, auth()->user(), $user);
 

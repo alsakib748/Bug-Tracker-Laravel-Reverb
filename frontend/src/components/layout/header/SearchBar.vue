@@ -2,7 +2,7 @@
   <div class="hidden lg:block">
     <form>
       <div class="relative">
-        <button class="absolute -translate-y-1/2 left-4 top-1/2">
+        <button type="button" aria-label="Search" class="absolute -translate-y-1/2 left-4 top-1/2">
           <svg
             class="fill-gray-500 dark:fill-gray-400"
             width="20"
@@ -26,6 +26,8 @@
         />
 
         <button
+          type="button"
+          aria-label="Open command menu"
           class="absolute right-2.5 top-1/2 inline-flex -translate-y-1/2 items-center gap-0.5 rounded-lg border border-gray-200 bg-gray-50 px-[7px] py-[4.5px] text-xs -tracking-[0.2px] text-gray-500 dark:border-gray-800 dark:bg-white/[0.03] dark:text-gray-400"
         >
           <span> ⌘ </span>

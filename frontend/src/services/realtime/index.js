@@ -1,75 +1,53 @@
-import echo from '../echo'
-
-// Reconnect recovery -------------------------------------------------------
+// Reconnect recovery and project subscriptions ---------------------------------
 //
-// Pusher/Reverb automatically re-subscribes channels after a dropped
-// connection, but messages published while offline are not replayed. Views
-// register a callback here so they can refetch their data once the socket is
-// back. The first "connected" event is ignored because the view already loads
-// its data on mount.
-const reconnectCallbacks = new Set()
-let hasConnected = false
+// This module intentionally does NOT import `services/echo` at the top level:
+// doing so would pull pusher-js + laravel-echo (~80 kB) into every page,
+// including the login screen that never opens a websocket. The Echo client is
+// dynamically imported the first time a channel is actually opened, and the
+// reconnect registry lives in dependency-free `./connection`.
+import { onRealtimeReconnect } from './connection'
 
-const connection = echo?.connector?.pusher?.connection
-
-if (connection && typeof connection.bind === 'function') {
-  // If the socket is already up when this module loads, treat the next
-  // "connected" as a reconnection rather than the initial handshake.
-  if (connection.state === 'connected') {
-    hasConnected = true
-  }
-
-  connection.bind('connected', () => {
-    if (!hasConnected) {
-      hasConnected = true
-      return
-    }
-
-    reconnectCallbacks.forEach((callback) => {
-      try {
-        callback()
-      } catch (error) {
-        console.error('Realtime reconnect handler failed:', error)
-      }
-    })
-  })
-}
+export { onRealtimeReconnect }
 
 /**
- * Register a callback invoked after the websocket reconnects.
- * Returns a function that removes the callback.
- */
-export function onRealtimeReconnect(callback) {
-  reconnectCallbacks.add(callback)
-
-  return () => reconnectCallbacks.delete(callback)
-}
-
-/**
- * Subscribe to issue events for a set of projects and invoke a handler for
- * each. Returns a function that tears down every subscription.
+ * Subscribe to a user's private channel and invoke a handler for each event.
+ * Returns a function that tears down the subscription.
  *
- * projectIds: numeric project ids to listen on (private-project.{id}).
- * events:     broadcast event names (e.g. "issue.created").
- * handler:    called once per matching event.
+ * Issue events are broadcast per-user (see the backend's
+ * `BroadcastsToProjectAudience` trait), so a single `user.{id}` channel keeps a
+ * client live across every project it can see — instead of one `project.{id}`
+ * channel per project.
+ *
+ * The Echo client is loaded lazily, so the first call resolves asynchronously;
+ * the returned teardown is safe to call before the client finishes loading.
  */
-export function subscribeToProjects(projectIds, events, handler) {
-  if (!echo || !Array.isArray(projectIds)) return () => {}
+export function subscribeToUser(userId, events, handler) {
+  if (!userId) return () => {}
 
-  const unsubs = projectIds
-    .filter((id) => id)
-    .map((id) => {
-      const channel = echo.private(`project.${id}`)
+  let disposed = false
+  let unsub = null
+
+  import('../echo')
+    .then(({ default: echo }) => {
+      if (disposed || !echo) return
+
+      const channel = echo.private(`user.${userId}`)
 
       events.forEach((event) => channel.listen(event, handler))
 
-      return () => {
+      unsub = () => {
         events.forEach((event) => channel.stopListening(event))
-        echo.leave(`project.${id}`)
+        echo.leave(`user.${userId}`)
       }
     })
+    .catch((error) => {
+      console.error('Failed to load realtime client:', error)
+    })
 
-  return () => unsubs.forEach((unsub) => unsub())
+  return () => {
+    disposed = true
+    if (unsub) unsub()
+  }
 }
 
 /**
@@ -87,5 +65,3 @@ export function debounce(fn, wait = 400) {
     }, wait)
   }
 }
-
-export default echo

@@ -1,13 +1,12 @@
 import Echo from 'laravel-echo'
 import Pusher from 'pusher-js'
 import api from './api'
+import { emitRealtimeConnected } from './realtime/connection'
 
 window.Pusher = Pusher
 
 const getCookie = (name) => {
-  const match = document.cookie.match(
-    new RegExp('(^|;\\s*)' + name + '=([^;]*)')
-  )
+  const match = document.cookie.match(new RegExp('(^|;\\s*)' + name + '=([^;]*)'))
   return match ? decodeURIComponent(match[2]) : null
 }
 
@@ -30,7 +29,7 @@ const authorizer = (channel, options) => {
               'X-Requested-With': 'XMLHttpRequest',
               'X-XSRF-TOKEN': getCookie('XSRF-TOKEN'),
             },
-          }
+          },
         )
         .then((response) => {
           callback(null, response.data)
@@ -42,39 +41,76 @@ const authorizer = (channel, options) => {
   }
 }
 
-const echo = new Echo({
-  broadcaster: 'reverb',
+// Echo (and pusher-js, ~80 kB) is created on first use instead of at startup:
+// the login/guest screens never pay for the websocket stack. The default
+// export is a proxy, so existing `echo.private(...)` / `echo.leave(...)`
+// call sites (including module-scope `echo?.connector` reads) keep working
+// unchanged — the first property access spins up the real instance.
+let instance = null
 
-  key: import.meta.env.VITE_REVERB_APP_KEY,
+const getEcho = () => {
+  if (!instance) {
+    instance = new Echo({
+      broadcaster: 'reverb',
 
-  wsHost: import.meta.env.VITE_REVERB_HOST || 'localhost',
+      key: import.meta.env.VITE_REVERB_APP_KEY,
 
-  wsPort: Number(import.meta.env.VITE_REVERB_PORT) || 8080,
+      wsHost: import.meta.env.VITE_REVERB_HOST || 'localhost',
 
-  wssPort: Number(import.meta.env.VITE_REVERB_PORT) || 8080,
+      wsPort: Number(import.meta.env.VITE_REVERB_PORT) || 8080,
 
-  forceTLS: import.meta.env.VITE_REVERB_SCHEME === 'https',
+      wssPort: Number(import.meta.env.VITE_REVERB_PORT) || 8080,
 
-  enabledTransports: ['ws', 'wss'],
+      forceTLS: import.meta.env.VITE_REVERB_SCHEME === 'https',
 
-  // Custom authorizer sends cookies (session + XSRF) and proper headers.
-  authorizer: authorizer,
+      enabledTransports: ['ws', 'wss'],
 
-  // Keep the legacy headers/endpoint around as a fallback so other Pusher
-  // internal calls (e.g. /pusher/auth on Reverb) still work.
-  authEndpoint: `${import.meta.env.VITE_BACKEND_URL}/api/broadcasting/auth`,
+      // Custom authorizer sends cookies (session + XSRF) and proper headers.
+      authorizer: authorizer,
 
-  auth: {
-    headers: {
-      Accept: 'application/json',
-      'X-Requested-With': 'XMLHttpRequest',
-      get 'X-XSRF-TOKEN'() {
-        return getCookie('XSRF-TOKEN')
+      // Keep the legacy headers/endpoint around as a fallback so other Pusher
+      // internal calls (e.g. /pusher/auth on Reverb) still work.
+      authEndpoint: `${import.meta.env.VITE_BACKEND_URL}/api/broadcasting/auth`,
+
+      auth: {
+        headers: {
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+          get 'X-XSRF-TOKEN'() {
+            return getCookie('XSRF-TOKEN')
+          },
+        },
       },
+
+      withCredentials: true,
+    })
+
+    // Notify the dependency-free reconnect registry (used by views that refetch
+    // after a dropped socket). The first "connected" is the initial handshake
+    // and is ignored there; later ones signal a real reconnection.
+    const connection = instance.connector?.pusher?.connection
+
+    if (connection && typeof connection.bind === 'function') {
+      connection.bind('connected', () => emitRealtimeConnected())
+    }
+  }
+
+  return instance
+}
+
+const echo = new Proxy(
+  {},
+  {
+    get(_target, prop) {
+      return Reflect.get(getEcho(), prop)
+    },
+    set(_target, prop, value) {
+      return Reflect.set(getEcho(), prop, value)
+    },
+    has(_target, prop) {
+      return prop in getEcho()
     },
   },
-
-  withCredentials: true,
-})
+)
 
 export default echo

@@ -1,56 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
+import { ensurePrimeVue } from '@/plugins/primevue'
 
+// First-paint routes stay eager: Login (landing), Forbidden (guard redirect
+// target) and NotFound (catch-all). Every admin view is code-split so the
+// entry chunk no longer carries the whole application.
 import Login from '@/views/Auth/Signin.vue'
-// import Signup from '@/views/Auth/Signup.vue'
-import Dashboard from '@/views/Admin/Dashboard/DashboardPage.vue'
 import NotFound from '@/views/Errors/FourZeroFour.vue'
 import Forbidden from '@/views/Errors/Forbidden.vue'
-
-// Import Users Pages
-import UsersIndex from '@/views/Admin/Users/Index.vue'
-import UsersCreate from '@/views/Admin/Users/Create.vue'
-import UsersEdit from '@/views/Admin/Users/Edit.vue'
-import Profile from '@/views/Admin/Profile.vue'
-
-// Import Roles Pages
-import RolesIndex from '@/views/Admin/Roles/Index.vue'
-
-// Import Project Pages
-import ProjectsIndex from '@/views/Admin/Projects/Index.vue'
-import ProjectsCreate from '@/views/Admin/Projects/Create.vue'
-import ProjectsEdit from '@/views/Admin/Projects/Edit.vue'
-import ProjectsShow from '@/views/Admin/Projects/Show.vue'
-
-// Import Issues Pages
-import IssuesIndex from '@/views/Admin/Issues/Index.vue'
-import IssuesCreate from '@/views/Admin/Issues/Create.vue'
-import IssuesEdit from '@/views/Admin/Issues/Edit.vue'
-import IssuesShow from '@/views/Admin/Issues/Show.vue'
-
-// Import Notifications Pages
-import NotificationsIndex from '@/views/Admin/Notifications/Index.vue'
-import NotificationsShow from '@/views/Admin/Notifications/Show.vue'
-
-// Import Activity Logs Pages
-import ActivityLogsIndex from '@/views/Admin/ActivityLogs/Index.vue'
-import ActivityLogsShow from '@/views/Admin/ActivityLogs/Show.vue'
-
-// Import Board & Backlog Pages
-import BoardPage from '@/views/Admin/Board/BoardPage.vue'
-import BacklogPage from '@/views/Admin/Backlog/BacklogPage.vue'
-
-// Import Automation Pages
-import AutomationIndex from '@/views/Admin/Automation/Index.vue'
-import AutomationCreate from '@/views/Admin/Automation/Create.vue'
-import AutomationEdit from '@/views/Admin/Automation/Edit.vue'
-import AutomationShow from '@/views/Admin/Automation/Show.vue'
-
-// Import Analytics Pages
-import AnalyticsPage from '@/views/Admin/Analytics/AnalyticsPage.vue'
-
-// Import GitHub Integration Page
-import GitHubIntegrationPage from '@/views/Admin/GitHub/IntegrationPage.vue'
 
 const routes = [
   {
@@ -58,179 +15,175 @@ const routes = [
     name: 'Login',
     alias: '/signin',
     component: Login,
-    meta: { guest: true },
+    meta: { guest: true, primeVue: false },
   },
-  // {
-  //   path: '/signup',
-  //   name: 'Signup',
-  //   component: Signup,
-  //   meta: { guest: true },
-  // },
   {
     path: '/dashboard',
     name: 'Dashboard',
-    component: Dashboard,
-    meta: { requiresAuth: true, permission: 'view dashboard' },
+    component: () => import('@/views/Admin/Dashboard/DashboardPage.vue'),
+    meta: { requiresAuth: true, permission: 'view dashboard', primeVue: false },
   },
   {
     path: '/users',
     name: 'UsersIndex',
-    component: UsersIndex,
+    component: () => import('@/views/Admin/Users/Index.vue'),
     meta: { requiresAuth: true, permission: 'view users' },
   },
   {
     path: '/users/create',
     name: 'UsersCreate',
-    component: UsersCreate,
+    component: () => import('@/views/Admin/Users/Create.vue'),
     meta: { requiresAuth: true, permission: 'create users' },
   },
   {
     path: '/users/:id/edit',
     name: 'UsersEdit',
-    component: UsersEdit,
+    component: () => import('@/views/Admin/Users/Edit.vue'),
     meta: { requiresAuth: true, permission: 'update users' },
   },
   {
     path: '/roles',
     name: 'RolesIndex',
-    component: RolesIndex,
+    component: () => import('@/views/Admin/Roles/Index.vue'),
     meta: { requiresAuth: true, permission: 'manage roles' },
   },
   {
     path: '/profile',
     name: 'Profile',
-    component: Profile,
+    component: () => import('@/views/Admin/Profile.vue'),
     meta: { requiresAuth: true },
   },
   {
     path: '/projects',
     name: 'ProjectsIndex',
-    component: ProjectsIndex,
+    component: () => import('@/views/Admin/Projects/Index.vue'),
     meta: { requiresAuth: true, permission: 'view projects' },
   },
   {
     path: '/projects/create',
     name: 'ProjectsCreate',
-    component: ProjectsCreate,
+    component: () => import('@/views/Admin/Projects/Create.vue'),
     meta: { requiresAuth: true, permission: 'create projects' },
   },
   {
     path: '/projects/:id/edit',
     name: 'ProjectsEdit',
-    component: ProjectsEdit,
+    component: () => import('@/views/Admin/Projects/Edit.vue'),
     meta: { requiresAuth: true, permission: 'update projects' },
   },
   {
     path: '/projects/:id',
     name: 'ProjectsShow',
-    component: ProjectsShow,
+    component: () => import('@/views/Admin/Projects/Show.vue'),
     meta: { requiresAuth: true, permission: 'view projects' },
   },
   {
     path: '/issues',
     name: 'IssuesIndex',
-    component: IssuesIndex,
+    component: () => import('@/views/Admin/Issues/Index.vue'),
     meta: { requiresAuth: true, permission: 'view issues' },
   },
   {
     path: '/issues/create',
     name: 'IssuesCreate',
-    component: IssuesCreate,
+    component: () => import('@/views/Admin/Issues/Create.vue'),
     meta: { requiresAuth: true, permission: 'create issues' },
   },
   {
     path: '/issues/:id/edit',
     name: 'IssuesEdit',
-    component: IssuesEdit,
+    component: () => import('@/views/Admin/Issues/Edit.vue'),
     meta: { requiresAuth: true, permission: 'update issues' },
   },
   {
     path: '/issues/:id',
     name: 'IssuesShow',
-    component: IssuesShow,
+    component: () => import('@/views/Admin/Issues/Show.vue'),
     meta: { requiresAuth: true },
   },
   {
     path: '/notifications',
     name: 'NotificationsIndex',
-    component: NotificationsIndex,
+    component: () => import('@/views/Admin/Notifications/Index.vue'),
     meta: { requiresAuth: true, permission: 'view notifications' },
   },
   {
     path: '/notifications/:id',
     name: 'NotificationsShow',
-    component: NotificationsShow,
+    component: () => import('@/views/Admin/Notifications/Show.vue'),
     meta: { requiresAuth: true, permission: 'view notifications' },
   },
   {
     path: '/activity-logs',
     name: 'ActivityLogsIndex',
-    component: ActivityLogsIndex,
+    component: () => import('@/views/Admin/ActivityLogs/Index.vue'),
     meta: { requiresAuth: true, permission: 'view activity logs' },
   },
   {
     path: '/activity-logs/:id',
     name: 'ActivityLogsShow',
-    component: ActivityLogsShow,
+    component: () => import('@/views/Admin/ActivityLogs/Show.vue'),
     meta: { requiresAuth: true, permission: 'view activity logs' },
   },
   {
     path: '/board',
     name: 'BoardPage',
-    component: BoardPage,
+    component: () => import('@/views/Admin/Board/BoardPage.vue'),
     meta: { requiresAuth: true, permission: 'view board' },
   },
   {
     path: '/backlog',
     name: 'BacklogPage',
-    component: BacklogPage,
+    component: () => import('@/views/Admin/Backlog/BacklogPage.vue'),
     meta: { requiresAuth: true, permission: 'view backlog' },
   },
   {
     path: '/automation',
     name: 'AutomationIndex',
-    component: AutomationIndex,
+    component: () => import('@/views/Admin/Automation/Index.vue'),
     meta: { requiresAuth: true, permission: 'view automation rules' },
   },
   {
     path: '/automation/create',
     name: 'AutomationCreate',
-    component: AutomationCreate,
+    component: () => import('@/views/Admin/Automation/Create.vue'),
     meta: { requiresAuth: true, permission: 'manage automation rules' },
   },
   {
     path: '/automation/:id/edit',
     name: 'AutomationEdit',
-    component: AutomationEdit,
+    component: () => import('@/views/Admin/Automation/Edit.vue'),
     meta: { requiresAuth: true, permission: 'manage automation rules' },
   },
   {
     path: '/automation/:id',
     name: 'AutomationShow',
-    component: AutomationShow,
+    component: () => import('@/views/Admin/Automation/Show.vue'),
     meta: { requiresAuth: true, permission: 'view automation rules' },
   },
   {
     path: '/analytics',
     name: 'AnalyticsPage',
-    component: AnalyticsPage,
+    component: () => import('@/views/Admin/Analytics/AnalyticsPage.vue'),
     meta: { requiresAuth: true, permission: 'view analytics' },
   },
   {
     path: '/github',
     name: 'GitHubIntegrationPage',
-    component: GitHubIntegrationPage,
+    component: () => import('@/views/Admin/GitHub/IntegrationPage.vue'),
     meta: { requiresAuth: true, permission: 'view github integration' },
   },
   {
     path: '/403',
     name: 'Forbidden',
     component: Forbidden,
+    meta: { primeVue: false },
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'NotFound',
     component: NotFound,
+    meta: { primeVue: false },
   },
 ]
 
@@ -267,6 +220,13 @@ router.beforeEach(async (to, _from, next) => {
 
   if (to.meta.permission && !auth.hasPermission(to.meta.permission)) {
     return next({ name: 'Forbidden' })
+  }
+
+  // Routes that render PrimeVue components load the plugin (and its theme) on
+  // demand. Routes marked `primeVue: false` (shell, dashboard, error pages)
+  // skip it entirely, keeping it off their critical path.
+  if (to.meta.primeVue !== false) {
+    await ensurePrimeVue()
   }
 
   next()

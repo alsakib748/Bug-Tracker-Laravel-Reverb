@@ -11,19 +11,22 @@ export const useAuthStore = defineStore('auth', {
     permissions: [],
   }),
   getters: {
-    isAdmin: (state) =>
-      Boolean(state.user?.is_admin) || state.roles.includes('Admin'),
+    isAdmin: (state) => Boolean(state.user?.is_admin) || state.roles.includes('Admin'),
     isDeveloper: (state) => state.roles.includes('Developer'),
     isTester: (state) => state.roles.includes('QA Tester'),
     hasRole: (state) => (role) => state.roles.includes(role),
     hasPermission: (state) => (permission) =>
       Boolean(state.user?.is_admin) || state.permissions.includes(permission),
-    hasAnyPermission: (state) => (list = []) =>
-      Boolean(state.user?.is_admin) ||
-      list.some((permission) => state.permissions.includes(permission)),
-    hasAllPermissions: (state) => (list = []) =>
-      Boolean(state.user?.is_admin) ||
-      list.every((permission) => state.permissions.includes(permission)),
+    hasAnyPermission:
+      (state) =>
+      (list = []) =>
+        Boolean(state.user?.is_admin) ||
+        list.some((permission) => state.permissions.includes(permission)),
+    hasAllPermissions:
+      (state) =>
+      (list = []) =>
+        Boolean(state.user?.is_admin) ||
+        list.every((permission) => state.permissions.includes(permission)),
   },
   actions: {
     async login(credentials) {
@@ -50,29 +53,8 @@ export const useAuthStore = defineStore('auth', {
         this.loading = false
       }
     },
-    async register(payload) {
-      this.loading = true
-
-      try {
-        // 1. Get CSRF cookie (cached after first call)
-        await getCsrfToken()
-
-        // 2. Register
-        await api.post('/register', payload)
-
-        this.authenticated = true
-
-        // 3. Fetch user
-        await this.getUser()
-
-        return true
-      } catch (error) {
-        console.error('Registration failed: ', error)
-        return false
-      } finally {
-        this.loading = false
-      }
-    },
+    // Registration is intentionally not supported: users are created by
+    // administrators only.
     async getUser() {
       try {
         // const response = await api.get('/api/user')
@@ -135,7 +117,7 @@ export const useAuthStore = defineStore('auth', {
         // Reset notification listeners so the next login can re-register
         try {
           const notificationStore = useNotificationStore()
-          notificationStore.stopListeners()
+          await notificationStore.stopListeners()
           notificationStore.listenersInitialized = false
         } catch (_) {}
 

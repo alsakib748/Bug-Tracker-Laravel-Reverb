@@ -555,11 +555,8 @@ const bootstrap = async () => {
   loadError.value = null
 
   try {
-    await authStore.checkAuth()
-
-    if (!authStore.authenticated) {
-      return
-    }
+    // Auth is guaranteed by the router guard (ensureAuthChecked) before this
+    // view mounts, so the previous extra GET /user round-trip is gone.
 
     const data = await issueStore.fetchIssue(route.params.id)
     issue.value = data
@@ -569,27 +566,28 @@ const bootstrap = async () => {
       return
     }
 
-    // 4. Load project members
-    if (issue.value.project?.id) {
-      projectMembers.value = await projectStore.fetchMembers(issue.value.project.id)
-    }
+    const projectId = issue.value.project?.id
 
-    // 5. Load comments
-    await loadComments()
+    // Everything the detail view renders past the issue itself is independent,
+    // so the 10 serial round-trips below now run as one concurrent batch.
+    const membersPromise = projectId
+      ? projectStore.fetchMembers(projectId).then((members) => {
+          projectMembers.value = members
+        })
+      : Promise.resolve()
 
-    // 6. Load attachments
-    await loadAttachments()
-
-    // 7. Load workflow data (status history + allowed transitions)
-    await loadHistory()
-    await loadAllowedTransitions()
-
-    // 8. Load labels, watchers and links
-    await loadIssueLabels()
-    await loadProjectLabels(issue.value.project?.id)
-    await loadWatchers()
-    await loadLinks()
-    await loadGitHubLinks()
+    await Promise.all([
+      membersPromise,
+      loadComments(),
+      loadAttachments(),
+      loadHistory(),
+      loadAllowedTransitions(),
+      loadIssueLabels(),
+      loadProjectLabels(projectId),
+      loadWatchers(),
+      loadLinks(),
+      loadGitHubLinks(),
+    ])
     loadGitHubCandidates()
 
     if (issue.value?.id) {

@@ -1,31 +1,59 @@
 import { defineStore } from 'pinia'
 import api from '@/services/api'
 
+// Concurrent identical list loads (e.g. DashboardFilterBar + DashboardPage
+// both bootstrapping the same GET /projects) share one in-flight promise
+// instead of issuing duplicate requests.
+let listInFlight = null
+let listInFlightKey = null
+
 export const useProjectStore = defineStore('projects', {
   state: () => ({
     projects: [],
     project: null,
     loading: false,
+    loadingMore: false,
     pagination: {
       current_page: 1,
       last_page: 1,
-      per_page: 10,
+      per_page: 15,
       total: 0,
     },
   }),
   actions: {
-    async fetchAllProjects(params = {}) {
-      this.loading = true
+    async fetchAllProjects(params = {}, { append = false } = {}) {
+      if (append) return this.fetchProjectsPage(params, true)
+
+      const key = JSON.stringify(params)
+      if (listInFlight && listInFlightKey === key) return listInFlight
+
+      listInFlightKey = key
+      listInFlight = this.fetchProjectsPage(params, false).finally(() => {
+        listInFlight = null
+        listInFlightKey = null
+      })
+
+      return listInFlight
+    },
+    async fetchProjectsPage(params = {}, append = false) {
+      if (append) this.loadingMore = true
+      else this.loading = true
 
       try {
         const response = await api.get('/projects', { params })
-        this.projects = response.data.data || []
+        const items = response.data.data || []
         // ResourceCollection + paginator nests paging under `meta`
         const meta = response.data.meta || response.data
+        if (append) {
+          const seen = new Set(this.projects.map((project) => project.id))
+          this.projects = [...this.projects, ...items.filter((project) => !seen.has(project.id))]
+        } else {
+          this.projects = items
+        }
         this.pagination = {
           current_page: meta.current_page || 1,
           last_page: meta.last_page || 1,
-          per_page: meta.per_page || 10,
+          per_page: meta.per_page || 15,
           total: meta.total || 0,
         }
         return response.data
@@ -33,8 +61,13 @@ export const useProjectStore = defineStore('projects', {
         console.error('Failed to fetch projects: ', error)
         throw error
       } finally {
-        this.loading = false
+        if (append) this.loadingMore = false
+        else this.loading = false
       }
+    },
+    removeProjectFromList(id) {
+      this.projects = this.projects.filter((project) => project.id !== id)
+      this.pagination.total = Math.max(0, this.pagination.total - 1)
     },
     async createProject(data) {
       this.loading = true

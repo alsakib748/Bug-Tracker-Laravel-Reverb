@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Events\IssueCreated;
 use App\Jobs\Automation\EvaluateAutomationRule;
+use App\Listeners\Automation\DiscoverAutomationRules;
 use App\Models\AutomationExecution;
 use App\Models\AutomationRule;
 use App\Models\Issue;
@@ -11,6 +12,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Services\Automation\AutomationExecutionService;
 use Illuminate\Database\QueryException;
+use Illuminate\Events\CallQueuedListener;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
@@ -73,7 +75,18 @@ class AutomationEngineTest extends TestCase
 
         $issue = $this->makeIssue();
 
-        event(new IssueCreated($issue, 'evt-1', $this->admin->id));
+        $event = new IssueCreated($issue, 'evt-1', $this->admin->id);
+        event($event);
+
+        // Discovery is queued (ShouldQueue), so the fake captures the listener
+        // job itself instead of executing it. Assert it was queued, then run
+        // discovery inline to verify it pushes one evaluation per matching
+        // enabled rule.
+        Queue::assertPushed(CallQueuedListener::class, function ($job) {
+            return $job->class === DiscoverAutomationRules::class;
+        });
+
+        app(DiscoverAutomationRules::class)->handle($event);
 
         Queue::assertPushed(EvaluateAutomationRule::class);
     }
@@ -86,7 +99,12 @@ class AutomationEngineTest extends TestCase
 
         $issue = $this->makeIssue();
 
-        event(new IssueCreated($issue, 'evt-1', $this->admin->id));
+        $event = new IssueCreated($issue, 'evt-1', $this->admin->id);
+        event($event);
+
+        // Run discovery inline (the queued listener never executes under a
+        // fake) to prove disabled rules are filtered out, not merely unreached.
+        app(DiscoverAutomationRules::class)->handle($event);
 
         Queue::assertNotPushed(EvaluateAutomationRule::class);
     }

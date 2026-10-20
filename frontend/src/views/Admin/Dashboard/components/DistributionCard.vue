@@ -12,7 +12,7 @@
           </span>
           <span class="text-gray-500 dark:text-gray-400">
             {{ row.count }}
-            <span class="text-gray-400 dark:text-gray-500">({{ percentOf(row.count) }}%)</span>
+            <span class="text-gray-600 dark:text-gray-400">({{ percentOf(row.count) }}%)</span>
           </span>
         </div>
         <div class="h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">

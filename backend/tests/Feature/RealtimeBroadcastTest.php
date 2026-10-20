@@ -49,7 +49,7 @@ class RealtimeBroadcastTest extends TestCase
             'reason' => 'Ready for review',
         ])->assertOk();
 
-        Event::assertDispatched(IssueStatusChanged::class, function (IssueStatusChanged $event) use ($issue) {
+        Event::assertDispatched(IssueStatusChanged::class, function (IssueStatusChanged $event) use ($issue, $admin) {
             $channels = array_map(fn ($channel) => $channel->name, $event->broadcastOn());
 
             return $event->issue->id === $issue->id
@@ -58,7 +58,10 @@ class RealtimeBroadcastTest extends TestCase
                 && $event->broadcastAs() === 'issue.status.changed'
                 && $event->broadcastWith()['new_status'] === 'code_review'
                 && in_array('private-issue.' . $issue->id, $channels, true)
-                && in_array('private-project.' . $issue->project_id, $channels, true);
+                && in_array('private-project.' . $issue->project_id, $channels, true)
+                // A single per-user channel lets clients stay live across every
+                // project without one channel per project.
+                && in_array('private-user.' . $admin->id, $channels, true);
         });
     }
 

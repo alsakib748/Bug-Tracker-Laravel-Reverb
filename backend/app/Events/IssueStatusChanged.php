@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Events\Concerns\BroadcastsToProjectAudience;
 use App\Models\Issue;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -12,7 +13,7 @@ use Illuminate\Queue\SerializesModels;
 
 class IssueStatusChanged implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use BroadcastsToProjectAudience, Dispatchable, InteractsWithSockets, SerializesModels;
 
     // public Issue $issue;
     // public string $oldStatus;
@@ -38,15 +39,18 @@ class IssueStatusChanged implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return [
-            new PrivateChannel(
-                'issue.'.$this->issue->id
-            ),
+        return array_merge(
+            [
+                new PrivateChannel(
+                    'issue.'.$this->issue->id
+                ),
 
-            new PrivateChannel(
-                'project.'.$this->issue->project_id
-            ),
-        ];
+                new PrivateChannel(
+                    'project.'.$this->issue->project_id
+                ),
+            ],
+            $this->projectAudienceChannels($this->issue->project_id),
+        );
     }
 
     public function broadcastAs(): string

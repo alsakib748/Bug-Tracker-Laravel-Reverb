@@ -43,7 +43,7 @@ class IssueController extends Controller
             'overdue',
         ]);
 
-        $perPage = $request->get('per_page', 15);
+        $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
 
         $issues = $this->issueService->getAllIssues($filters, $perPage, $request->user());
 

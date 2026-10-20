@@ -36,47 +36,64 @@ class IssueMetricsQuery
     }
 
     /**
-     * Issues resolved within the period, keyed on the authoritative resolved_at
-     * timestamp (set by WorkflowService on the resolved transition).
-     */
-    protected function resolvedInPeriod(Builder $query, AnalyticsFilters $filters): Builder
-    {
-        return $query
-            ->whereIn('status', MetricDefinitions::allResolvedStatuses())
-            ->whereNotNull('resolved_at')
-            ->where('resolved_at', '>=', $filters->periodStart)
-            ->where('resolved_at', '<', $filters->periodEnd);
-    }
-
-    /**
      * KPI summary for the scoped projects.
+     *
+     * All six counters are computed in a single pass over the scoped rows
+     * (conditional SUMs) instead of issuing six separate COUNT queries.
      *
      * @return array<string, int>
      */
     public function summary(AnalyticsFilters $filters): array
     {
-        $base = $this->base($filters);
+        [$start, $end] = $this->window($filters);
+
+        $openStatuses = MetricDefinitions::allOpenStatuses();
+        $resolvedStatuses = MetricDefinitions::allResolvedStatuses();
+        $openIn = $this->placeholders($openStatuses);
+        $resolvedIn = $this->placeholders($resolvedStatuses);
+
+        $row = $this->base($filters)
+            ->selectRaw('COUNT(*) as total_issues')
+            ->selectRaw(
+                "COALESCE(SUM(CASE WHEN status IN ({$openIn}) THEN 1 ELSE 0 END), 0) as open_issues",
+                $openStatuses,
+            )
+            ->selectRaw(
+                'COALESCE(SUM(CASE WHEN created_at >= ? AND created_at < ? THEN 1 ELSE 0 END), 0) as created_in_period',
+                [$start, $end],
+            )
+            ->selectRaw(
+                "COALESCE(SUM(CASE WHEN status IN ({$resolvedIn}) AND resolved_at IS NOT NULL AND resolved_at >= ? AND resolved_at < ? THEN 1 ELSE 0 END), 0) as resolved_in_period",
+                array_merge($resolvedStatuses, [$start, $end]),
+            )
+            ->selectRaw(
+                "COALESCE(SUM(CASE WHEN status IN ({$openIn}) AND due_date IS NOT NULL AND due_date < ? THEN 1 ELSE 0 END), 0) as overdue_issues",
+                array_merge($openStatuses, [now()->toDateTimeString()]),
+            )
+            ->selectRaw(
+                "COALESCE(SUM(CASE WHEN status IN ({$openIn}) AND priority = ? THEN 1 ELSE 0 END), 0) as critical_open_issues",
+                array_merge($openStatuses, ['critical']),
+            )
+            ->first();
 
         return [
-            'total_issues' => (clone $base)->count(),
-            'open_issues' => (clone $base)
-                ->whereIn('status', MetricDefinitions::allOpenStatuses())
-                ->count(),
-            'created_in_period' => (clone $base)
-                ->where('created_at', '>=', $filters->periodStart)
-                ->where('created_at', '<', $filters->periodEnd)
-                ->count(),
-            'resolved_in_period' => $this->resolvedInPeriod(clone $base, $filters)->count(),
-            'overdue_issues' => (clone $base)
-                ->whereIn('status', MetricDefinitions::allOpenStatuses())
-                ->whereNotNull('due_date')
-                ->where('due_date', '<', now())
-                ->count(),
-            'critical_open_issues' => (clone $base)
-                ->whereIn('status', MetricDefinitions::allOpenStatuses())
-                ->where('priority', 'critical')
-                ->count(),
+            'total_issues' => (int) $row->total_issues,
+            'open_issues' => (int) $row->open_issues,
+            'created_in_period' => (int) $row->created_in_period,
+            'resolved_in_period' => (int) $row->resolved_in_period,
+            'overdue_issues' => (int) $row->overdue_issues,
+            'critical_open_issues' => (int) $row->critical_open_issues,
         ];
+    }
+
+    /**
+     * Build a positional placeholder list for an IN clause.
+     *
+     * @param  list<string>  $values
+     */
+    protected function placeholders(array $values): string
+    {
+        return implode(',', array_fill(0, count($values), '?'));
     }
 
     /**

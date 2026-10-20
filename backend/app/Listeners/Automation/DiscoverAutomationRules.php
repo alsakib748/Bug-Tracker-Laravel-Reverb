@@ -20,13 +20,20 @@ use App\Jobs\Automation\EvaluateAutomationRule;
 use App\Models\AutomationRule;
 use App\Models\Issue;
 use App\Services\Automation\AutomationLoopGuard;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Str;
 
 /**
  * Maps a domain event onto the automation triggers it represents, snapshots the
  * relevant context, and queues one evaluation per matching enabled rule.
+ *
+ * Queued (queue workers are already required for automation/AI): rule
+ * discovery and the PR-linked issue resolution run off the request cycle.
+ * Every dispatching event passes actorId explicitly, so no auth context is
+ * needed in the worker; loop-guard depth is cache-based and shared across
+ * processes.
  */
-class DiscoverAutomationRules
+class DiscoverAutomationRules implements ShouldQueue
 {
     public function __construct(private readonly AutomationLoopGuard $loopGuard) {}
 

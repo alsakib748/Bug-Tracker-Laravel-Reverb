@@ -1,16 +1,29 @@
 import { defineStore } from 'pinia'
 import api, { getCsrfToken } from '@/services/api'
-import echo from '@/services/echo'
 import { onRealtimeReconnect } from '@/services/realtime'
 import { useAuthStore } from './auth'
 
 let removeReconnectListener = null
+// Held at module scope (not in Pinia state) so it stays out of the store's
+// serialisable snapshot. Echo is loaded lazily so the websocket stack
+// (pusher-js + laravel-echo) is not part of the initial bundle.
+let echoClient = null
+
+const loadEcho = async () => {
+  if (!echoClient) {
+    const { default: echo } = await import('@/services/echo')
+    echoClient = echo
+  }
+
+  return echoClient
+}
 
 export const useNotificationStore = defineStore('notifications', {
   state: () => ({
     notifications: [],
     loading: false,
     listenersInitialized: false, // prevent duplicate listeners
+    fetchedForUserId: null, // bootstrap-once guard (AppHeader remounts per navigation)
     pagination: {
       current_page: 1,
       last_page: 1,
@@ -39,6 +52,7 @@ export const useNotificationStore = defineStore('notifications', {
           per_page: response.data.per_page,
           total: response.data.total,
         }
+        this.fetchedForUserId = useAuthStore().user?.id ?? null
         //  update unread count
         return response.data
       } catch (error) {
@@ -101,14 +115,13 @@ export const useNotificationStore = defineStore('notifications', {
       } catch (_) {}
 
       try {
-        echo
-          .private(`user.${auth.user.id}`)
-          .listen('.notification.created', (data) => {
-            // Backend broadcastsAs('notification.created') and wraps payload
-            // in { notification: {...} }
-            const notification = data?.notification ?? data
-            this.notifications.unshift(notification)
-          })
+        const echo = await loadEcho()
+        echo.private(`user.${auth.user.id}`).listen('.notification.created', (data) => {
+          // Backend broadcastsAs('notification.created') and wraps payload
+          // in { notification: {...} }
+          const notification = data?.notification ?? data
+          this.notifications.unshift(notification)
+        })
 
         removeReconnectListener = onRealtimeReconnect(() => {
           this.fetchNotifications().catch(() => {})
@@ -120,7 +133,7 @@ export const useNotificationStore = defineStore('notifications', {
       }
     },
 
-    stopListeners() {
+    async stopListeners() {
       if (!this.listenersInitialized) return
       try {
         if (removeReconnectListener) {
@@ -128,8 +141,8 @@ export const useNotificationStore = defineStore('notifications', {
           removeReconnectListener = null
         }
         const auth = useAuthStore()
-        if (auth.user?.id) {
-          echo.leave(`user.${auth.user.id}`)
+        if (auth.user?.id && echoClient) {
+          echoClient.leave(`user.${auth.user.id}`)
         }
       } catch (error) {
         console.error('Failed to stop notification listeners:', error)

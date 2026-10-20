@@ -9,7 +9,7 @@ use App\Models\Comment;
 use App\Models\Issue;
 use App\Models\User;
 use App\Notifications\SystemNotification;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
@@ -25,12 +25,12 @@ class CommentService
         $this->activityLogService = $activityLogService;
     }
 
-    public function getCommentByIssue(Issue $issue): Collection
+    public function getCommentByIssue(Issue $issue, int $perPage = 50): LengthAwarePaginator
     {
         return $issue->comments()
             ->with('user')
             ->oldest()
-            ->get();
+            ->paginate($perPage);
     }
 
     public function createComment(Issue $issue, User $user, string $content): Comment

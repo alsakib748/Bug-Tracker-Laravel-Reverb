@@ -40,7 +40,8 @@ Route::get('/login', function () {
 })->name('login');
 
 Route::post('/login', [AuthController::class, 'login']);
-// Route::post('/register', [AuthController::class, 'register']);
+// Registration is intentionally disabled for this project: users are created
+// by administrators only (see UserController).
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
 // GitHub webhook — signature-authenticated (HMAC), outside auth:sanctum

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
@@ -8,10 +8,69 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#172554" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Traceflow is a private issue and bug tracker for planning, triaging and resolving software defects."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Non-blocking font load: the stylesheet is fetched as a low-priority
+         style and applied once ready, so it no longer delays first paint.
+         font-display=swap keeps text visible in the fallback meanwhile. -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"
+      />
+    </noscript>
     <title>Traceflow | Issue Bug Tracker</title>
+    <style>
+      /* Critical, dependency-free splash so first content paints before the
+         JS bundle is parsed. Vue replaces #app on mount. */
+      html,
+      body {
+        margin: 0;
+      }
+      #app-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #ffffff;
+      }
+      #app-splash .spinner {
+        width: 36px;
+        height: 36px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #465fff;
+        border-radius: 9999px;
+        animation: app-splash-spin 0.8s linear infinite;
+      }
+      @keyframes app-splash-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
   </head>
   <body class="dark:bg-gray-900">
-    <div id="app"></div>
+    <div id="app">
+      <div id="app-splash" role="status" aria-label="Loading application">
+        <div class="spinner"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

@@ -116,6 +116,36 @@ class AnalyticsTest extends TestCase
         $this->assertSame(1, array_sum($series['resolved']));
     }
 
+    public function test_trends_aggregate_legacy_and_modern_resolutions_in_the_same_bucket(): void
+    {
+        $modern = $this->issue(['status' => 'resolved']);
+        $modern->resolved_at = now();
+        $modern->save();
+
+        $legacy = $this->issue(['status' => 'closed']);
+        $legacy->forceFill(['resolved_at' => null, 'updated_at' => now()])->save();
+
+        $series = $this->getJson("/api/projects/{$this->project->id}/analytics/trends?granularity=day")
+            ->assertOk()
+            ->json('series');
+
+        // Both resolutions land in today's bucket; the legacy count must be
+        // added to the modern one rather than overwriting it.
+        $this->assertSame(2, array_sum($series['resolved']));
+    }
+
+    public function test_trends_support_month_granularity(): void
+    {
+        $this->issue(['status' => 'open']);
+
+        $series = $this->getJson("/api/projects/{$this->project->id}/analytics/trends?granularity=month")
+            ->assertOk()
+            ->json('series');
+
+        $this->assertSame([now()->format('Y-m')], $series['buckets']);
+        $this->assertSame([1], $series['created']);
+    }
+
     public function test_workflow_reports_time_in_status_and_reopenings(): void
     {
         $issue = $this->issue(['status' => 'resolved']);

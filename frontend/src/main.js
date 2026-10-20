@@ -1,10 +1,4 @@
 import './assets/main.css'
-// Import Swiper styles
-import 'swiper/css'
-import 'swiper/css/navigation'
-import 'swiper/css/pagination'
-import 'jsvectormap/dist/jsvectormap.css'
-import 'flatpickr/dist/flatpickr.css'
 
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
@@ -12,36 +6,38 @@ import Vue3Toastify from 'vue3-toastify' // 👈 Import Toastify
 import 'vue3-toastify/dist/index.css' // 👈 Import Toastify CSS
 import App from './App.vue'
 import router from './router'
-import VueApexCharts from 'vue3-apexcharts'
-
-// PrimeVue Import
-import PrimeVue from 'primevue/config'
-import Aura from '@primevue/themes/aura'
+import { setPrimeVueApp } from './plugins/primevue'
 
 // PrimeIcons
 import 'primeicons/primeicons.css'
 
-// Initialize the Echo/Reverb websocket client at startup
-import './services/echo'
+// The Echo/Reverb client is created lazily on first realtime subscription
+// (see services/echo.js) so pusher-js is no longer paid for at startup.
 
 const app = createApp(App)
 const pinia = createPinia()
 
+// PrimeVue + the Aura theme are code-split (see plugins/primevue.js) and only
+// loaded for routes that actually render PrimeVue components — the router
+// guard awaits ensurePrimeVue() before those routes mount. Passing the app
+// here lets the guard install the plugin on demand rather than at startup.
+setPrimeVueApp(app)
+
 app.use(pinia)
 app.use(router)
-app.use(PrimeVue, {
-  theme: {
-    preset: Aura,
-    options: {
-      darkModeSelector: '.dark',
-    },
-  },
-})
-app.use(VueApexCharts)
+
+// ApexCharts is only pulled in by the lazily-loaded Analytics page, which
+// imports it directly; the dashboard trend chart is dependency-free SVG.
 app.use(Vue3Toastify, {
   autoClose: 3000,
   position: 'top-right',
   clearOnUrlChange: false,
 })
 
-app.mount('#app')
+// Keep the inline splash (index.html) painted until the router's first
+// navigation — including the async auth guard, and the on-demand PrimeVue
+// install for routes that need it — has resolved, then mount so the real
+// shell replaces it directly instead of flashing an empty page.
+router.isReady().finally(() => {
+  app.mount('#app')
+})

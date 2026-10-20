@@ -162,6 +162,7 @@ const subscribeToProject = (id) => {
     .listen('.issue.board.updated', reloadFromRealtime)
     .listen('.issue.created', reloadFromRealtime)
     .listen('.issue.updated', reloadFromRealtime)
+    .listen('.issue.assigned', reloadFromRealtime)
     .listen('.issue.deleted', reloadFromRealtime)
 }
 

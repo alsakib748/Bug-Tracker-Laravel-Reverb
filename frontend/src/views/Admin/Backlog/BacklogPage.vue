@@ -223,6 +223,7 @@ const subscribeToProject = (id) => {
     .private(`project.${id}`)
     .listen('.issue.created', refreshFromRealtime)
     .listen('.issue.updated', refreshFromRealtime)
+    .listen('.issue.assigned', refreshFromRealtime)
     .listen('.issue.deleted', refreshFromRealtime)
     .listen('.issue.board.updated', refreshFromRealtime)
 }

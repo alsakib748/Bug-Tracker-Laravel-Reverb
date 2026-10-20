@@ -44,7 +44,7 @@ class IssueWorkflowController extends Controller
     {
         $this->authorize('view', $issue);
 
-        $perPage = (int) $request->get('per_page', 20);
+        $perPage = min(max((int) $request->get('per_page', 20), 1), 100);
 
         $history = $issue->statusHistories()
             ->with('actor:id,name')

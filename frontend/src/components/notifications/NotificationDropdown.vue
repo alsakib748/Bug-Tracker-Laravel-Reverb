@@ -10,7 +10,7 @@
           fill="" />
       </svg>
       <span v-if="unreadCount > 0"
-        class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center">
+        class="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full min-w-[20px] h-5 px-1 flex items-center justify-center">
         {{ unreadCount > 99 ? '99+' : unreadCount }}
       </span>
     </button>

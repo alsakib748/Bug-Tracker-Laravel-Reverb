@@ -1,47 +1,49 @@
 <template>
   <FullScreenLayout>
-    <div class="relative p-6 bg-white z-1 dark:bg-gray-900 sm:p-0">
+    <div class="relative bg-white dark:bg-gray-900">
       <div
-        class="relative flex flex-col justify-center w-full h-screen lg:flex-row dark:bg-gray-900"
+        class="relative flex min-h-[100svh] flex-col lg:flex-row dark:bg-gray-900"
       >
-        <div class="relative flex flex-col flex-1 w-full overflow-hidden lg:w-1/2">
+        <div class="relative flex flex-1 flex-col overflow-x-hidden overflow-y-hidden lg:w-1/2">
           <div class="pointer-events-none absolute inset-0" aria-hidden="true">
             <div
-              class="absolute -left-20 -top-24 h-80 w-80 rounded-full bg-brand-500/10 blur-3xl dark:bg-brand-500/[0.06]"
+              class="absolute -left-16 -top-16 h-64 w-64 rounded-full bg-brand-500/10 blur-3xl dark:bg-brand-500/[0.06]"
             ></div>
             <div
-              class="absolute -bottom-28 -right-24 h-96 w-96 rounded-full bg-theme-purple-500/10 blur-3xl dark:bg-theme-purple-500/[0.06]"
+              class="absolute -bottom-20 -right-16 h-80 w-80 rounded-full bg-theme-purple-500/10 blur-3xl dark:bg-theme-purple-500/[0.06]"
             ></div>
             <div
-              class="absolute inset-0 bg-[radial-gradient(circle,rgba(70,95,255,0.08)_1px,transparent_1px)] opacity-60 [background-size:22px_22px] dark:opacity-40"
+              class="absolute inset-0 bg-[radial-gradient(circle,rgba(70,95,255,0.08)_1px,transparent_1px)] opacity-40 [background-size:18px_18px] dark:opacity-25"
             ></div>
           </div>
-          <div class="relative z-10 flex flex-col justify-center flex-1 w-full max-w-md mx-auto">
-            <div>
-              <div class="mb-5 sm:mb-8">
-                <router-link to="/" class="mb-6 flex justify-center">
+          <div
+            class="relative z-10 mx-auto flex w-full max-w-sm flex-1 flex-col justify-center px-4 py-6 sm:px-6 lg:py-8"
+          >
+              <div class="mb-4 sm:mb-5">
+                <router-link to="/" class="mb-3 flex justify-center">
                   <img
                     class="dark:hidden"
                     src="/images/logo/logo.svg"
                     alt="Traceflow"
-                    height="40"
+                    height="36"
                   />
                   <img
                     class="hidden dark:block"
                     src="/images/logo/logo-dark.svg"
                     alt="Traceflow"
-                    height="40"
+                    height="36"
                   />
                 </router-link>
-                <hr />
-                <h2
-                  class="mb-2 font-semibold text-gray-800 text-title-sm dark:text-white/90 sm:text-title-md"
-                >
-                  Sign In
-                </h2>
-                <p class="text-sm text-gray-500 dark:text-gray-400">
-                  Enter your email and password to sign in!
-                </p>
+                <div class="text-center">
+                  <h2
+                    class="mb-1 font-semibold text-gray-800 text-lg dark:text-white/90 sm:text-xl"
+                  >
+                    Sign In
+                  </h2>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 sm:text-sm">
+                    Enter your email and password to sign in
+                  </p>
+                </div>
               </div>
 
               <div
@@ -53,7 +55,7 @@
 
               <div>
                 <form @submit.prevent="handleSubmit">
-                  <div class="space-y-5">
+                  <div class="space-y-4">
                     <!-- Email -->
                     <div>
                       <label
@@ -178,27 +180,38 @@
                       <button
                         type="submit"
                         :disabled="loading"
-                        class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-brand-500 shadow-theme-xs hover:bg-brand-600"
+                        class="flex items-center justify-center w-full px-4 py-3 text-sm font-medium text-white transition rounded-lg bg-brand-500 shadow-theme-xs hover:bg-brand-600 disabled:opacity-60 disabled:cursor-not-allowed"
                       >
                         {{ loading ? 'Signing in...' : 'Sign In' }}
                       </button>
                     </div>
                   </div>
                 </form>
-                <!-- <div class="mt-5">
-                  <p
-                    class="text-sm font-normal text-center text-gray-700 dark:text-gray-400 sm:text-start"
-                  >
-                    Don't have an account?
-                    <router-link
-                      to="/signup"
-                      class="text-brand-500 hover:text-brand-600 dark:text-brand-400"
-                      >Sign Up</router-link
-                    >
-                  </p>
-                </div> -->
               </div>
-            </div>
+
+              <!-- Quick Sign In by Role -->
+              <div class="mt-4 mb-2">
+                <div class="relative flex items-center py-1">
+                  <div class="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
+                  <span class="flex-shrink mx-3 text-[11px] font-medium text-gray-400 dark:text-gray-500">
+                    Quick Sign In as
+                  </span>
+                  <div class="flex-grow border-t border-gray-200 dark:border-gray-700"></div>
+                </div>
+
+                <div class="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                  <button
+                    v-for="account in quickAccounts"
+                    :key="account.email"
+                    type="button"
+                    :disabled="loading"
+                    @click="fillAndSubmit(account)"
+                    class="group flex items-center justify-center rounded-md border border-gray-200 bg-white px-1.5 py-1.5 text-[11px] font-medium text-gray-700 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:border-brand-800 dark:hover:bg-brand-500/10 dark:hover:text-brand-400"
+                  >
+                    <span>{{ account.label }} Signin</span>
+                  </button>
+                </div>
+              </div>
           </div>
         </div>
         <AuthBrandPanel />
@@ -222,6 +235,22 @@ const form = reactive({
   email: '',
   password: '',
 })
+
+const quickAccounts = [
+  { label: 'Admin', email: 'admin@gmail.com', password: '11111111' },
+  { label: 'Project Manager', email: 'projectmanager@gmail.com', password: '11111111' },
+  { label: 'Developer', email: 'developer@gmail.com', password: '11111111' },
+  { label: 'QA Tester', email: 'tester@gmail.com', password: '11111111' },
+  { label: 'Viewer', email: 'viewer@gmail.com', password: '11111111' },
+  { label: 'Reporter', email: 'reporter@gmail.com', password: '11111111' },
+]
+
+const fillAndSubmit = async (account) => {
+  form.email = account.email
+  form.password = account.password
+  errorMessage.value = ''
+  await handleSubmit()
+}
 
 const loading = ref(false)
 const errorMessage = ref('')

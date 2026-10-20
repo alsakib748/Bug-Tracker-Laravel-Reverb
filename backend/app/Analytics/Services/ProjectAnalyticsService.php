@@ -68,42 +68,43 @@ class ProjectAnalyticsService
      */
     protected function perProject(AnalyticsFilters $filters): array
     {
-        $base = fn () => Issue::query()
-            ->when($filters->projectIds !== [], fn ($q) => $q->whereIn('project_id', $filters->projectIds));
+        // Aggregate in SQL (GROUP BY) instead of materialising one row per
+        // issue into PHP; a small per-status result set is folded in PHP.
+        $counts = Issue::query()
+            ->when($filters->projectIds !== [], fn ($q) => $q->whereIn('project_id', $filters->projectIds))
+            ->groupBy('project_id', 'status')
+            ->selectRaw('project_id, status, COUNT(*) as total')
+            ->get();
 
-        $totals = $base()->get(['project_id', 'status'])
-            ->groupBy('project_id');
-
-        $resolved = $base()
+        $resolved = Issue::query()
+            ->when($filters->projectIds !== [], fn ($q) => $q->whereIn('project_id', $filters->projectIds))
             ->whereIn('status', MetricDefinitions::allResolvedStatuses())
             ->whereNotNull('resolved_at')
             ->where('resolved_at', '>=', $filters->periodStart)
             ->where('resolved_at', '<', $filters->periodEnd)
-            ->get(['project_id'])
-            ->groupBy('project_id');
+            ->groupBy('project_id')
+            ->selectRaw('project_id, COUNT(*) as total')
+            ->pluck('total', 'project_id');
 
-        $names = $totals->keys()
-            ->concat($resolved->keys())
-            ->unique()
-            ->mapWithKeys(function ($projectId) {
-                $project = Project::find($projectId, ['id', 'name', 'code']);
+        $projectIds = $counts->pluck('project_id')->concat($resolved->keys())->unique()->all();
+        $names = Project::whereIn('id', $projectIds)->get(['id', 'name', 'code'])->keyBy('id');
 
-                return [$projectId => $project ? ['name' => $project->name, 'code' => $project->code] : ['name' => '', 'code' => '']];
-            });
+        return $counts
+            ->groupBy('project_id')
+            ->map(function ($rows, $projectId) use ($resolved, $names) {
+                $open = (int) $rows->sum(function ($row) {
+                    $status = $row->status instanceof IssueStatus ? $row->status->value : (string) $row->status;
 
-        return collect($names->keys())
-            ->map(function ($projectId) use ($totals, $resolved, $names) {
-                $issues = $totals->get($projectId, collect());
+                    return MetricDefinitions::isOpen($status) ? (int) $row->total : 0;
+                });
 
                 return [
                     'project_id' => (int) $projectId,
-                    'name' => (string) $names[$projectId]['name'],
-                    'code' => (string) $names[$projectId]['code'],
-                    'total_issues' => $issues->count(),
-                    'open_issues' => $issues->filter(fn (Issue $issue) => MetricDefinitions::isOpen(
-                        $issue->status instanceof IssueStatus ? $issue->status->value : (string) $issue->status,
-                    ))->count(),
-                    'resolved_in_period' => $resolved->get($projectId, collect())->count(),
+                    'name' => (string) ($names[$projectId]->name ?? ''),
+                    'code' => (string) ($names[$projectId]->code ?? ''),
+                    'total_issues' => (int) $rows->sum('total'),
+                    'open_issues' => $open,
+                    'resolved_in_period' => (int) ($resolved[$projectId] ?? 0),
                 ];
             })
             ->sortByDesc('open_issues')

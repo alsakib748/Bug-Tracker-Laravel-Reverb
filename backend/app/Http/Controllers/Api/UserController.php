@@ -27,7 +27,7 @@ class UserController extends Controller
         $this->authorize('viewAny', User::class);
 
         $filters = $request->only(['search', 'role', 'status', 'sort']);
-        $perPage = $request->get('per_page', 15);
+        $perPage = min(max((int) $request->get('per_page', 15), 1), 100);
 
         $users = $this->userService->getAllUsers($filters, $perPage);
 

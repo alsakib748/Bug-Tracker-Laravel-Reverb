@@ -128,13 +128,13 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import PageBreadcrumb from '@/components/common/PageBreadcrumb.vue'
 import EmptyState from '@/components/common/EmptyState.vue'
 import ErrorState from '@/components/common/ErrorState.vue'
 import { useDashboardStore } from '@/stores/dashboard'
-import { useProjectStore } from '@/stores/projects'
+import { useAuthStore } from '@/stores/auth'
 import DashboardFilterBar from './components/DashboardFilterBar.vue'
 import DashboardSkeleton from './components/DashboardSkeleton.vue'
 import KpiCard from './components/KpiCard.vue'
@@ -142,10 +142,11 @@ import TrendsChart from './components/TrendsChart.vue'
 import ResolutionHealthCard from './components/ResolutionHealthCard.vue'
 import DistributionCard from './components/DistributionCard.vue'
 import PerProjectTable from './components/PerProjectTable.vue'
-import { onRealtimeReconnect, subscribeToProjects, debounce } from '@/services/realtime'
+import { onRealtimeReconnect, subscribeToUser, debounce } from '@/services/realtime'
+import { runWhenIdle } from '@/utils/idle'
 
 const store = useDashboardStore()
-const projectStore = useProjectStore()
+const authStore = useAuthStore()
 
 const hasData = computed(() => Boolean(store.data.period || store.data.summary.total_issues > 0))
 
@@ -176,47 +177,35 @@ const resetFilters = () => {
 const debouncedRefresh = debounce(refresh, 600)
 const unsubs = ref([])
 
-// Subscribe only to the projects in scope so we never listen to channels the
-// user cannot see. Falls back to every visible project when unscoped.
-const realtimeProjectIds = () => {
-  const filtered = store.filters?.project_ids || []
-  if (filtered.length) return filtered
-  return projectStore.projects.map((p) => p.id)
-}
-
+// One `user.{id}` channel covers every project the user can see, so the
+// dashboard no longer opens a websocket channel per project. Each event just
+// re-runs the current fetch (with whatever filters are applied).
 const clearRealtime = () => {
   unsubs.value.forEach((unsub) => unsub())
   unsubs.value = []
 }
 
-const listenToScope = () => {
+const startRealtime = () => {
   clearRealtime()
-  const ids = realtimeProjectIds()
-  if (!ids.length) return
+
+  const userId = authStore.user?.id
+  if (!userId) return
+
   unsubs.value.push(
-    subscribeToProjects(ids, DASHBOARD_ISSUE_EVENTS, debouncedRefresh),
+    subscribeToUser(userId, DASHBOARD_ISSUE_EVENTS, debouncedRefresh),
     // Refetch after a socket drop so the dashboard does not sit on stale numbers.
     onRealtimeReconnect(debouncedRefresh),
   )
 }
 
-// Re-subscribe whenever the filter scope (or the project list it may fall back
-// to) changes, so live updates keep matching the numbers on screen.
-watch(() => [store.filters?.project_ids, projectStore.projects], listenToScope, { deep: true })
-
-onMounted(async () => {
-  try {
-    // Ensure the project list is loaded before subscribing so an "all projects"
-    // scope has channels to listen on.
-    if (!projectStore.projects.length) {
-      await projectStore.fetchAllProjects()
-    }
-  } catch {
-    // The dashboard still loads; we just fall back to reconnect-only refresh.
-  }
-
+onMounted(() => {
+  // Fire the dashboard request immediately; it is the page's data.
   refresh()
-  listenToScope()
+
+  // Realtime wiring is non-critical for first paint: it opens a websocket and
+  // an auth handshake, so we only start it once the page has loaded and the
+  // browser is otherwise idle.
+  runWhenIdle(startRealtime, { timeout: 3000 })
 })
 
 onBeforeUnmount(clearRealtime)

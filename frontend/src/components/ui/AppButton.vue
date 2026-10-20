@@ -12,7 +12,16 @@
     :aria-busy="loading ? 'true' : undefined"
     @click="onClick"
   >
-    <i v-if="loading" class="pi pi-spin pi-spinner" aria-hidden="true" />
+    <svg
+      v-if="loading"
+      class="h-4 w-4 animate-spin"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+    </svg>
     <span v-else-if="startIcon" class="flex items-center">
       <component :is="startIcon" />
     </span>

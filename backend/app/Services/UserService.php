@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Models\User;
+use App\Support\AvatarOptimizer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 
 class UserService
 {
+    public function __construct(private AvatarOptimizer $avatars = new AvatarOptimizer()) {}
+
     /**
      * Get all users with optional filters and pagination.
      */
@@ -35,7 +38,10 @@ class UserService
                     $direction = 'desc';
                     $sort = substr($sort, 1);
                 }
-                $q->orderBy($sort, $direction);
+                $allowed = ['id', 'name', 'email', 'status', 'created_at'];
+                if (in_array($sort, $allowed, true)) {
+                    $q->orderBy($sort, $direction);
+                }
             }, fn($q) => $q->orderBy('id', 'desc'));
 
         return $query->paginate($perPage);
@@ -140,7 +146,7 @@ class UserService
                 Storage::disk('public')->delete($user->avatar);
             }
 
-            $updateData['avatar'] = $data['avatar']->store('avatars', 'public');
+            $updateData['avatar'] = $this->avatars->storeUploaded($data['avatar']);
         }
 
         $user->update($updateData);
